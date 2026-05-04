@@ -1,0 +1,476 @@
+import addOnUISdk from "https://new.express.adobe.com/static/add-on-sdk/sdk.js";
+
+const viewport = document.getElementById("viewport");
+const viewPan = document.getElementById("viewPan");
+const viewZoom = document.getElementById("viewZoom");
+const focusContainer = document.getElementById("focus-container");
+const focusImg = document.getElementById("focusImg");
+const refImg = document.getElementById("refImg");
+const opacityCtrl = document.getElementById("opacityCtrl");
+const gridSnap = document.getElementById("gridSnap");
+const resetBtn = document.getElementById("resetBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+const addToDocumentBtn = document.getElementById("addToDocumentBtn");
+const statusText = document.getElementById("status");
+const handles = Array.from({ length: 4 }, (_, index) => document.getElementById(`h${index}`));
+const centerGrab = document.getElementById("centerGrab");
+
+const REF_PLACEHOLDER =
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+  <defs>
+    <linearGradient id="wall" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="900" fill="url(#wall)"/>
+  <path d="M120 240h660v420H120z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="10"/>
+  <path d="M160 280h580v130H160z" fill="#bfdbfe"/>
+  <path d="M160 450h270v170H160zM470 450h270v170H470z" fill="#ffffff" stroke="#cbd5e1" stroke-width="6"/>
+  <path d="M120 660h660l70 170H50z" fill="#94a3b8"/>
+  <path d="M320 660 260 830M580 660l60 170" stroke="#64748b" stroke-width="8"/>
+  <text x="450" y="180" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#334155">Reference</text>
+</svg>`);
+
+const FOCUS_PLACEHOLDER =
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+  <defs>
+    <linearGradient id="focus" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="900" rx="56" fill="url(#focus)"/>
+  <circle cx="450" cy="360" r="130" fill="rgba(255,255,255,0.2)"/>
+  <path d="M235 590h430" stroke="#fff" stroke-width="36" stroke-linecap="round"/>
+  <path d="M305 665h290" stroke="#fff" stroke-width="24" stroke-linecap="round" opacity=".8"/>
+  <text x="450" y="385" text-anchor="middle" font-family="Arial, sans-serif" font-size="76" font-weight="800" fill="#fff">WARP</text>
+</svg>`);
+
+const EXPORT_SIZE = 1200;
+const GRID_SIZE = 20;
+const MESH_STEPS = 42;
+
+let points = [];
+let activeHandle = null;
+let isDraggingWhole = false;
+let lastContentPos = { x: 0, y: 0 };
+let viewTx = 0;
+let viewTy = 0;
+let viewS = 1;
+let isViewPan = false;
+let lastPanClient = { x: 0, y: 0 };
+let addOnReady = false;
+
+function setStatus(message) {
+    statusText.textContent = message;
+}
+
+function getViewportSize() {
+    const size = viewport.clientWidth || 450;
+    return { width: size, height: size };
+}
+
+function getInitialPoints() {
+    const { width, height } = getViewportSize();
+    const inset = Math.round(Math.min(width, height) * 0.22);
+    return [
+        { x: inset, y: inset },
+        { x: width - inset, y: inset },
+        { x: width - inset, y: height - inset },
+        { x: inset, y: height - inset },
+    ];
+}
+
+function quadCenter() {
+    const cx = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
+    const cy = (points[0].y + points[1].y + points[2].y + points[3].y) / 4;
+    return { x: cx, y: cy };
+}
+
+function applyViewTransform() {
+    viewPan.style.transform = `translate(${viewTx}px, ${viewTy}px)`;
+    viewZoom.style.transform = `scale(${viewS})`;
+    document.getElementById("viewZoomLabel").textContent = `${Math.round(viewS * 100)}%`;
+}
+
+function clientToContent(clientX, clientY) {
+    const rect = viewport.getBoundingClientRect();
+    const mx = clientX - rect.left;
+    const my = clientY - rect.top;
+    return { x: (mx - viewTx) / viewS, y: (my - viewTy) / viewS };
+}
+
+function isPanBackgroundTarget(target) {
+    return target === refImg || target === viewPan || target === viewZoom || target === viewport;
+}
+
+function getTransform(from, to) {
+    const A = [];
+    const b = [];
+
+    for (let i = 0; i < 4; i++) {
+        A.push([from[i].x, from[i].y, 1, 0, 0, 0, -from[i].x * to[i].x, -from[i].y * to[i].x]);
+        A.push([0, 0, 0, from[i].x, from[i].y, 1, -from[i].x * to[i].y, -from[i].y * to[i].y]);
+        b.push(to[i].x, to[i].y);
+    }
+
+    const h = solveLinearSystem(A, b);
+    return {
+        css: `matrix3d(${h[0]}, ${h[3]}, 0, ${h[6]}, ${h[1]}, ${h[4]}, 0, ${h[7]}, 0, 0, 1, 0, ${h[2]}, ${h[5]}, 0, 1)`,
+        h,
+    };
+}
+
+function solveLinearSystem(A, b) {
+    const n = A.length;
+    const matrix = A.map((row, index) => [...row, b[index]]);
+
+    for (let i = 0; i < n; i++) {
+        let max = i;
+        for (let j = i + 1; j < n; j++) {
+            if (Math.abs(matrix[j][i]) > Math.abs(matrix[max][i])) {
+                max = j;
+            }
+        }
+
+        [matrix[i], matrix[max]] = [matrix[max], matrix[i]];
+
+        const pivot = matrix[i][i];
+        if (Math.abs(pivot) < 1e-10) {
+            throw new Error("The selected corner points are too close to calculate a warp.");
+        }
+
+        for (let j = i + 1; j < n; j++) {
+            const c = matrix[j][i] / pivot;
+            for (let k = i; k <= n; k++) {
+                matrix[j][k] -= c * matrix[i][k];
+            }
+        }
+    }
+
+    const x = new Array(n);
+    for (let i = n - 1; i >= 0; i--) {
+        let sum = 0;
+        for (let j = i + 1; j < n; j++) {
+            sum += matrix[i][j] * x[j];
+        }
+        x[i] = (matrix[i][n] - sum) / matrix[i][i];
+    }
+
+    return x;
+}
+
+function projectPoint(h, x, y) {
+    const denominator = h[6] * x + h[7] * y + 1;
+    return {
+        x: (h[0] * x + h[1] * y + h[2]) / denominator,
+        y: (h[3] * x + h[4] * y + h[5]) / denominator,
+    };
+}
+
+function updateUI() {
+    const { width, height } = getViewportSize();
+
+    points.forEach((p, index) => {
+        handles[index].style.left = `${p.x}px`;
+        handles[index].style.top = `${p.y}px`;
+        document.getElementById(`val${index}`).textContent = `${Math.round(p.x)},${Math.round(p.y)}`;
+    });
+
+    const center = quadCenter();
+    centerGrab.style.left = `${center.x}px`;
+    centerGrab.style.top = `${center.y}px`;
+
+    try {
+        const from = [
+            { x: 0, y: 0 },
+            { x: width, y: 0 },
+            { x: width, y: height },
+            { x: 0, y: height },
+        ];
+        focusContainer.style.transform = getTransform(from, points).css;
+    } catch (error) {
+        setStatus(error.message);
+    }
+
+    focusContainer.style.opacity = opacityCtrl.value;
+
+    const topWidth = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+    const bottomWidth = Math.hypot(points[2].x - points[3].x, points[2].y - points[3].y);
+    document.getElementById("valZ").textContent = bottomWidth ? (topWidth / bottomWidth).toFixed(2) : "0.00";
+
+    applyViewTransform();
+}
+
+function setupUploader(inputId, targetImg) {
+    document.getElementById(inputId).addEventListener("change", (event) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.addEventListener("load", () => {
+            targetImg.src = reader.result;
+            updateUI();
+            setStatus(inputId === "focusUpload" ? "Focus image loaded. Drag the corners to warp it." : "Reference image loaded.");
+        });
+        reader.readAsDataURL(file);
+    });
+}
+
+function handlePointerDown(event) {
+    const p = clientToContent(event.clientX, event.clientY);
+
+    if (event.target === centerGrab) {
+        isDraggingWhole = true;
+        lastContentPos = p;
+        centerGrab.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        return;
+    }
+
+    const handleIndex = event.target.dataset?.index;
+    if (handleIndex !== undefined && event.target.classList.contains("handle")) {
+        activeHandle = Number.parseInt(handleIndex, 10);
+        event.target.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        return;
+    }
+
+    if (isPanBackgroundTarget(event.target)) {
+        isViewPan = true;
+        lastPanClient = { x: event.clientX, y: event.clientY };
+        viewport.setPointerCapture(event.pointerId);
+        event.preventDefault();
+    }
+}
+
+function handlePointerMove(event) {
+    if (isViewPan) {
+        viewTx += event.clientX - lastPanClient.x;
+        viewTy += event.clientY - lastPanClient.y;
+        lastPanClient = { x: event.clientX, y: event.clientY };
+        applyViewTransform();
+        return;
+    }
+
+    if (activeHandle === null && !isDraggingWhole) {
+        return;
+    }
+
+    const p = clientToContent(event.clientX, event.clientY);
+
+    if (activeHandle !== null) {
+        const x = gridSnap.checked ? Math.round(p.x / GRID_SIZE) * GRID_SIZE : p.x;
+        const y = gridSnap.checked ? Math.round(p.y / GRID_SIZE) * GRID_SIZE : p.y;
+        points[activeHandle] = { x, y };
+    } else {
+        const dx = p.x - lastContentPos.x;
+        const dy = p.y - lastContentPos.y;
+        points = points.map((point) => ({ x: point.x + dx, y: point.y + dy }));
+        lastContentPos = p;
+    }
+
+    updateUI();
+}
+
+function stopDragging() {
+    activeHandle = null;
+    isDraggingWhole = false;
+    isViewPan = false;
+}
+
+function imageLoaded(image) {
+    if (image.complete && image.naturalWidth > 0) {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", reject, { once: true });
+    });
+}
+
+function drawTriangle(ctx, image, src, dst) {
+    const [s0, s1, s2] = src;
+    const [d0, d1, d2] = dst;
+    const denom = s0.x * (s1.y - s2.y) + s1.x * (s2.y - s0.y) + s2.x * (s0.y - s1.y);
+
+    if (Math.abs(denom) < 1e-6) {
+        return;
+    }
+
+    const a = (d0.x * (s1.y - s2.y) + d1.x * (s2.y - s0.y) + d2.x * (s0.y - s1.y)) / denom;
+    const b = (d0.y * (s1.y - s2.y) + d1.y * (s2.y - s0.y) + d2.y * (s0.y - s1.y)) / denom;
+    const c = (d0.x * (s2.x - s1.x) + d1.x * (s0.x - s2.x) + d2.x * (s1.x - s0.x)) / denom;
+    const d = (d0.y * (s2.x - s1.x) + d1.y * (s0.x - s2.x) + d2.y * (s1.x - s0.x)) / denom;
+    const e = (d0.x * (s1.x * s2.y - s2.x * s1.y) + d1.x * (s2.x * s0.y - s0.x * s2.y) + d2.x * (s0.x * s1.y - s1.x * s0.y)) / denom;
+    const f = (d0.y * (s1.x * s2.y - s2.x * s1.y) + d1.y * (s2.x * s0.y - s0.x * s2.y) + d2.y * (s0.x * s1.y - s1.x * s0.y)) / denom;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(d0.x, d0.y);
+    ctx.lineTo(d1.x, d1.y);
+    ctx.lineTo(d2.x, d2.y);
+    ctx.closePath();
+    ctx.clip();
+    ctx.transform(a, b, c, d, e, f);
+    ctx.drawImage(image, 0, 0);
+    ctx.restore();
+}
+
+async function createWarpedBlob() {
+    await imageLoaded(focusImg);
+
+    const { width, height } = getViewportSize();
+    const scale = EXPORT_SIZE / Math.max(width, height);
+    const from = [
+        { x: 0, y: 0 },
+        { x: width, y: 0 },
+        { x: width, y: height },
+        { x: 0, y: height },
+    ];
+    const { h } = getTransform(from, points);
+    const imageWidth = focusImg.naturalWidth;
+    const imageHeight = focusImg.naturalHeight;
+    const canvas = document.createElement("canvas");
+    canvas.width = EXPORT_SIZE;
+    canvas.height = EXPORT_SIZE;
+
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.globalAlpha = Number(opacityCtrl.value);
+
+    for (let row = 0; row < MESH_STEPS; row++) {
+        for (let col = 0; col < MESH_STEPS; col++) {
+            const x0 = (col / MESH_STEPS) * width;
+            const y0 = (row / MESH_STEPS) * height;
+            const x1 = ((col + 1) / MESH_STEPS) * width;
+            const y1 = ((row + 1) / MESH_STEPS) * height;
+            const src = [
+                { x: (x0 / width) * imageWidth, y: (y0 / height) * imageHeight },
+                { x: (x1 / width) * imageWidth, y: (y0 / height) * imageHeight },
+                { x: (x1 / width) * imageWidth, y: (y1 / height) * imageHeight },
+                { x: (x0 / width) * imageWidth, y: (y1 / height) * imageHeight },
+            ];
+            const dst = [
+                projectPoint(h, x0, y0),
+                projectPoint(h, x1, y0),
+                projectPoint(h, x1, y1),
+                projectPoint(h, x0, y1),
+            ].map((point) => ({ x: point.x * scale, y: point.y * scale }));
+
+            drawTriangle(ctx, focusImg, [src[0], src[1], src[2]], [dst[0], dst[1], dst[2]]);
+            drawTriangle(ctx, focusImg, [src[0], src[2], src[3]], [dst[0], dst[2], dst[3]]);
+        }
+    }
+
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (blob) {
+                resolve(blob);
+            } else {
+                reject(new Error("Could not render the warped image."));
+            }
+        }, "image/png");
+    });
+}
+
+async function downloadWarpedImage() {
+    try {
+        setStatus("Rendering warped PNG...");
+        const blob = await createWarpedBlob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "perspective-warp.png";
+        link.click();
+        URL.revokeObjectURL(url);
+        setStatus("PNG rendered.");
+    } catch (error) {
+        setStatus(error.message);
+    }
+}
+
+async function addWarpedImageToDocument() {
+    if (!addOnReady) {
+        return;
+    }
+
+    try {
+        addToDocumentBtn.disabled = true;
+        setStatus("Rendering and adding image to your Express page...");
+        const blob = await createWarpedBlob();
+        await addOnUISdk.app.document.addImage(blob, { title: "Perspective warp" });
+        setStatus("Warped PNG added to the current page.");
+    } catch (error) {
+        setStatus(error.message || "Could not add the warped image to the page.");
+    } finally {
+        addToDocumentBtn.disabled = !addOnReady;
+    }
+}
+
+function resetTransform() {
+    points = getInitialPoints();
+    viewTx = 0;
+    viewTy = 0;
+    viewS = 1;
+    updateUI();
+    setStatus(addOnReady ? "Transformation reset." : "Waiting for Adobe Express...");
+}
+
+function handleWheel(event) {
+    event.preventDefault();
+    const rect = viewport.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+    const cx = (mx - viewTx) / viewS;
+    const cy = (my - viewTy) / viewS;
+    const factor = event.deltaY > 0 ? 0.92 : 1.08;
+    const newS = Math.min(6, Math.max(0.25, viewS * factor));
+
+    viewTx = mx - cx * newS;
+    viewTy = my - cy * newS;
+    viewS = newS;
+    applyViewTransform();
+}
+
+function initializePlanner() {
+    refImg.src = REF_PLACEHOLDER;
+    focusImg.src = FOCUS_PLACEHOLDER;
+    refImg.addEventListener("dragstart", (event) => event.preventDefault());
+    focusImg.addEventListener("dragstart", (event) => event.preventDefault());
+
+    points = getInitialPoints();
+    setupUploader("refUpload", refImg);
+    setupUploader("focusUpload", focusImg);
+
+    viewport.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
+    viewport.addEventListener("wheel", handleWheel, { passive: false });
+    opacityCtrl.addEventListener("input", updateUI);
+    resetBtn.addEventListener("click", resetTransform);
+    downloadBtn.addEventListener("click", downloadWarpedImage);
+    addToDocumentBtn.addEventListener("click", addWarpedImageToDocument);
+    window.addEventListener("resize", updateUI);
+
+    updateUI();
+}
+
+initializePlanner();
+
+addOnUISdk.ready.then(() => {
+    console.log("addOnUISdk is ready for use.");
+    addOnReady = true;
+    addToDocumentBtn.disabled = false;
+    setStatus("Ready. Upload a focus image or use the placeholder, then add it to the page.");
+});

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="description" content="Perspective warp planner for Adobe Express" />
+        <meta name="keywords" content="Adobe, Express, Add-On, warp, perspective" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Perspective Warp</title>
+        <style>
+            :root {
+                color: #172033;
+                background: #ffffff;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                min-width: 320px;
+                background: #ffffff;
+            }
+
+            button,
+            input {
+                font: inherit;
+            }
+
+            .app {
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                max-width: 520px;
+                margin: 0 auto;
+                padding: 16px;
+            }
+
+            .app-header {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                text-align: center;
+            }
+
+            .app-title {
+                margin: 0;
+                color: #0f172a;
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.04em;
+            }
+
+            .app-subtitle {
+                margin: 0;
+                color: #64748b;
+                font-size: 12px;
+                line-height: 1.35;
+            }
+
+            .upload-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .field {
+                display: flex;
+                min-width: 0;
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .label {
+                color: #64748b;
+                font-size: 10px;
+                font-weight: 800;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .file-input {
+                width: 100%;
+                color: #475569;
+                font-size: 11px;
+            }
+
+            .file-input::file-selector-button {
+                margin-right: 8px;
+                padding: 6px 8px;
+                border: 0;
+                border-radius: 8px;
+                background: #eef2ff;
+                color: #3730a3;
+                font-size: 11px;
+                font-weight: 700;
+                cursor: pointer;
+            }
+
+            .view-window {
+                position: relative;
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                max-width: 480px;
+                margin: 0 auto;
+                overflow: hidden;
+                border: 2px solid #1f2937;
+                border-radius: 10px;
+                background:
+                    linear-gradient(135deg, rgba(148, 163, 184, 0.25) 25%, transparent 25%) 0 0 / 24px 24px,
+                    linear-gradient(315deg, rgba(148, 163, 184, 0.25) 25%, transparent 25%) 0 0 / 24px 24px,
+                    #e2e8f0;
+                box-shadow: 0 20px 35px rgba(15, 23, 42, 0.18);
+                touch-action: none;
+                user-select: none;
+            }
+
+            #viewPan,
+            #viewZoom {
+                position: absolute;
+                inset: 0;
+                transform-origin: 0 0;
+            }
+
+            #viewZoom {
+                width: 100%;
+                height: 100%;
+                cursor: grab;
+            }
+
+            #viewZoom:active {
+                cursor: grabbing;
+            }
+
+            .ref-image {
+                position: absolute;
+                inset: 0;
+                z-index: 10;
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                -webkit-user-drag: none;
+            }
+
+            #grid-overlay {
+                position: absolute;
+                inset: 0;
+                z-index: 15;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+            }
+
+            #focus-container {
+                position: absolute;
+                inset: 0;
+                z-index: 20;
+                transform-origin: 0 0;
+                pointer-events: none;
+            }
+
+            #focusImg {
+                display: block;
+                width: 100%;
+                height: 100%;
+                object-fit: fill;
+                -webkit-user-drag: none;
+            }
+
+            .handle,
+            .handle-center {
+                position: absolute;
+                border: 2px solid #ffffff;
+                border-radius: 999px;
+                transform: translate(-50%, -50%);
+                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35);
+                touch-action: none;
+            }
+
+            .handle {
+                z-index: 100;
+                width: 18px;
+                height: 18px;
+                background: #2563eb;
+                cursor: move;
+            }
+
+            .handle:hover {
+                background: #ef4444;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+
+            .handle-center {
+                z-index: 101;
+                width: 22px;
+                height: 22px;
+                background: #ec4899;
+                cursor: grab;
+            }
+
+            .handle-center:hover {
+                background: #db2777;
+                transform: translate(-50%, -50%) scale(1.15);
+            }
+
+            .handle-center:active {
+                cursor: grabbing;
+            }
+
+            .controls {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                padding: 14px;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                background: #f8fafc;
+            }
+
+            .control-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+            }
+
+            .control-row + .control-row {
+                padding-top: 10px;
+                border-top: 1px solid #e2e8f0;
+            }
+
+            .range {
+                width: min(180px, 52%);
+                accent-color: #2563eb;
+            }
+
+            .checkbox-label {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                color: #475569;
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+            }
+
+            .button-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .button {
+                min-height: 34px;
+                padding: 7px 10px;
+                border: 1px solid #cbd5e1;
+                border-radius: 999px;
+                background: #ffffff;
+                color: #334155;
+                font-size: 12px;
+                font-weight: 750;
+                cursor: pointer;
+                transition:
+                    background 0.15s ease,
+                    border-color 0.15s ease,
+                    color 0.15s ease;
+            }
+
+            .button:hover:not(:disabled) {
+                background: #f1f5f9;
+            }
+
+            .button-primary {
+                border-color: #5258e4;
+                background: #5258e4;
+                color: #ffffff;
+            }
+
+            .button-primary:hover:not(:disabled) {
+                border-color: #4046ca;
+                background: #4046ca;
+            }
+
+            .button:disabled {
+                border-color: #cbd5e1;
+                background: #e2e8f0;
+                color: #94a3b8;
+                cursor: not-allowed;
+            }
+
+            .stats {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px 10px;
+                padding: 10px;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                background: #ffffff;
+                color: #475569;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+                font-size: 11px;
+            }
+
+            .stat-wide {
+                display: flex;
+                grid-column: 1 / -1;
+                justify-content: space-between;
+                padding-top: 6px;
+                border-top: 1px solid #e2e8f0;
+                font-weight: 800;
+            }
+
+            .stat-depth {
+                color: #2563eb;
+            }
+
+            .status {
+                min-height: 16px;
+                margin: 0;
+                color: #64748b;
+                font-size: 11px;
+                line-height: 1.35;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <main class="app">
+            <header class="app-header">
+                <h1 class="app-title">Perspective Warp</h1>
+                <p class="app-subtitle">Upload a focus image, drag the blue corners, then add the warped PNG to your Express page.</p>
+            </header>
+
+            <section class="upload-grid" aria-label="Image uploads">
+                <div class="field">
+                    <label class="label" for="refUpload">Background Ref</label>
+                    <input class="file-input" type="file" id="refUpload" accept="image/*" />
+                </div>
+                <div class="field">
+                    <label class="label" for="focusUpload">Focus Image</label>
+                    <input class="file-input" type="file" id="focusUpload" accept="image/*" />
+                </div>
+            </section>
+
+            <section class="view-window" id="viewport" aria-label="Warp preview">
+                <div id="viewPan">
+                    <div id="viewZoom">
+                        <img class="ref-image" id="refImg" alt="Reference" draggable="false" />
+
+                        <svg id="grid-overlay" aria-hidden="true">
+                            <defs>
+                                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(15,23,42,0.16)" stroke-width="0.75" />
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#grid)" />
+                        </svg>
+
+                        <div id="focus-container">
+                            <img id="focusImg" alt="Focus" draggable="false" />
+                        </div>
+
+                        <div id="h0" class="handle" data-index="0" title="Top left"></div>
+                        <div id="h1" class="handle" data-index="1" title="Top right"></div>
+                        <div id="h2" class="handle" data-index="2" title="Bottom right"></div>
+                        <div id="h3" class="handle" data-index="3" title="Bottom left"></div>
+                        <div id="centerGrab" class="handle-center" title="Drag to move the whole focus quad"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="controls" aria-label="Warp controls">
+                <div class="control-row">
+                    <label class="label" for="opacityCtrl">Focus Opacity</label>
+                    <input class="range" type="range" id="opacityCtrl" min="0" max="1" step="0.01" value="0.72" />
+                </div>
+
+                <div class="control-row">
+                    <label class="checkbox-label" for="gridSnap">
+                        <input type="checkbox" id="gridSnap" />
+                        Grid Snap
+                    </label>
+                    <button id="resetBtn" class="button" type="button">Reset</button>
+                </div>
+
+                <div class="button-row">
+                    <button id="downloadBtn" class="button" type="button">Download PNG</button>
+                    <button id="addToDocumentBtn" class="button button-primary" type="button" disabled>Add to Page</button>
+                </div>
+
+                <div class="stats" aria-label="Warp values">
+                    <div>TL: <span id="val0">0,0</span></div>
+                    <div>TR: <span id="val1">0,0</span></div>
+                    <div>BL: <span id="val3">0,0</span></div>
+                    <div>BR: <span id="val2">0,0</span></div>
+                    <div class="stat-wide stat-depth">
+                        <span>Z-Scale Ratio</span>
+                        <span id="valZ">1.00</span>
+                    </div>
+                    <div class="stat-wide">
+                        <span>View Zoom</span>
+                        <span id="viewZoomLabel">100%</span>
+                    </div>
+                </div>
+                <p id="status" class="status">Initializing add-on...</p>
+            </section>
+        </main>
+
+        <script type="module" src="add-on-console-override.js"></script>
+        <script type="module" src="index.js"></script>
+    </body>
+</html>

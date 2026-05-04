@@ -1,0 +1,21 @@
+{
+    "testId": "45bc35c5-fa66-41c7-b5b2-4edfce12bb9d",
+    "name": "Warp Addon",
+    "version": "1.0.0",
+    "manifestVersion": 2,
+    "requirements": {
+        "apps": [
+            {
+                "name": "Express",
+                "apiVersion": 1
+            }
+        ]
+    },
+    "entryPoints": [
+        {
+            "type": "panel",
+            "id": "panel1",
+            "main": "index.html"
+        }
+    ]
+}
