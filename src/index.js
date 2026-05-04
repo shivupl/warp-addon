@@ -14,6 +14,7 @@ const addToDocumentBtn = document.getElementById("addToDocumentBtn");
 const statusText = document.getElementById("status");
 const handles = Array.from({ length: 4 }, (_, index) => document.getElementById(`h${index}`));
 const centerGrab = document.getElementById("centerGrab");
+const coordinateInputs = Array.from(document.querySelectorAll(".coord-input"));
 
 const REF_PLACEHOLDER =
     "data:image/svg+xml;charset=utf-8," +
@@ -77,12 +78,17 @@ function getViewportSize() {
 
 function getInitialPoints() {
     const { width, height } = getViewportSize();
-    const inset = Math.round(Math.min(width, height) * 0.22);
+    const size = Math.round(Math.min(width, height) * 0.56);
+    const left = Math.round((width - size) / 2);
+    const top = Math.round((height - size) / 2);
+    const right = left + size;
+    const bottom = top + size;
+
     return [
-        { x: inset, y: inset },
-        { x: width - inset, y: inset },
-        { x: width - inset, y: height - inset },
-        { x: inset, y: height - inset },
+        { x: left, y: top },
+        { x: right, y: top },
+        { x: right, y: bottom },
+        { x: left, y: bottom },
     ];
 }
 
@@ -178,7 +184,16 @@ function updateUI() {
     points.forEach((p, index) => {
         handles[index].style.left = `${p.x}px`;
         handles[index].style.top = `${p.y}px`;
-        document.getElementById(`val${index}`).textContent = `${Math.round(p.x)},${Math.round(p.y)}`;
+    });
+
+    coordinateInputs.forEach((input) => {
+        const index = Number.parseInt(input.dataset.index, 10);
+        const axis = input.dataset.axis;
+        const value = Math.round(points[index][axis]);
+
+        if (document.activeElement !== input || input.value === "") {
+            input.value = String(value);
+        }
     });
 
     const center = quadCenter();
@@ -203,7 +218,10 @@ function updateUI() {
 }
 
 function setupUploader(inputId, targetImg) {
-    document.getElementById(inputId).addEventListener("change", (event) => {
+    const input = document.getElementById(inputId);
+    const uploadButton = document.querySelector(`label[for="${inputId}"].upload-button`);
+
+    input.addEventListener("change", (event) => {
         const file = event.target.files?.[0];
         if (!file) {
             return;
@@ -212,11 +230,32 @@ function setupUploader(inputId, targetImg) {
         const reader = new FileReader();
         reader.addEventListener("load", () => {
             targetImg.src = reader.result;
+            uploadButton?.classList.add("is-uploaded");
+            const buttonText = uploadButton?.querySelector(".upload-button-text");
+            if (buttonText) {
+                buttonText.textContent = "Uploaded";
+            }
             updateUI();
             setStatus(inputId === "focusUpload" ? "Focus image loaded. Drag the corners to warp it." : "Reference image loaded.");
         });
         reader.readAsDataURL(file);
     });
+}
+
+function updatePointFromInput(input) {
+    const index = Number.parseInt(input.dataset.index, 10);
+    const axis = input.dataset.axis;
+    const value = Number.parseFloat(input.value);
+
+    if (!Number.isFinite(value) || !points[index] || (axis !== "x" && axis !== "y")) {
+        return;
+    }
+
+    points[index] = {
+        ...points[index],
+        [axis]: value,
+    };
+    updateUI();
 }
 
 function handlePointerDown(event) {
@@ -456,6 +495,10 @@ function initializePlanner() {
     resetBtn.addEventListener("click", resetTransform);
     downloadBtn.addEventListener("click", downloadWarpedImage);
     addToDocumentBtn.addEventListener("click", addWarpedImageToDocument);
+    coordinateInputs.forEach((input) => {
+        input.addEventListener("input", () => updatePointFromInput(input));
+        input.addEventListener("change", updateUI);
+    });
     window.addEventListener("resize", updateUI);
 
     updateUI();
@@ -467,5 +510,5 @@ addOnUISdk.ready.then(() => {
     console.log("addOnUISdk is ready for use.");
     addOnReady = true;
     addToDocumentBtn.disabled = false;
-    setStatus("Ready. Upload a focus image or use the placeholder, then add it to the page.");
+    setStatus("");
 });

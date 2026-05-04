@@ -86,21 +86,43 @@
             }
 
             .file-input {
-                width: 100%;
-                color: #475569;
-                font-size: 11px;
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
             }
 
-            .file-input::file-selector-button {
-                margin-right: 8px;
-                padding: 6px 8px;
-                border: 0;
-                border-radius: 8px;
+            .upload-button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 34px;
+                width: 100%;
+                padding: 8px 12px;
+                border: 1px solid #dbe2ea;
+                border-radius: 999px;
                 background: #eef2ff;
                 color: #3730a3;
-                font-size: 11px;
-                font-weight: 700;
+                font-size: 12px;
+                font-weight: 800;
                 cursor: pointer;
+                transition:
+                    background 0.15s ease,
+                    border-color 0.15s ease,
+                    color 0.15s ease;
+            }
+
+            .upload-button:hover {
+                border-color: #c7d2fe;
+                background: #e0e7ff;
+            }
+
+            .upload-button.is-uploaded {
+                border-color: #86efac;
+                background: #dcfce7;
+                color: #166534;
             }
 
             .view-window {
@@ -116,7 +138,6 @@
                     linear-gradient(135deg, rgba(148, 163, 184, 0.25) 25%, transparent 25%) 0 0 / 24px 24px,
                     linear-gradient(315deg, rgba(148, 163, 184, 0.25) 25%, transparent 25%) 0 0 / 24px 24px,
                     #e2e8f0;
-                box-shadow: 0 20px 35px rgba(15, 23, 42, 0.18);
                 touch-action: none;
                 user-select: none;
             }
@@ -178,7 +199,6 @@
                 position: absolute;
                 border-radius: 999px;
                 transform: translate(-50%, -50%);
-                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35);
                 touch-action: none;
             }
 
@@ -188,9 +208,6 @@
                 height: 14px;
                 border: 2px solid #2563eb;
                 background: rgba(255, 255, 255, 0.12);
-                box-shadow:
-                    0 0 0 1px #ffffff,
-                    0 2px 8px rgba(15, 23, 42, 0.35);
                 cursor: move;
             }
 
@@ -303,7 +320,7 @@
             .stats {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                gap: 6px 10px;
+                gap: 8px 10px;
                 padding: 10px;
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
@@ -311,6 +328,77 @@
                 color: #475569;
                 font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
                 font-size: 11px;
+            }
+
+            .advanced-controls {
+                padding-top: 8px;
+                border-top: 1px solid #e2e8f0;
+            }
+
+            .advanced-controls summary {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                min-height: 32px;
+                color: #64748b;
+                font-size: 11px;
+                font-weight: 750;
+                cursor: pointer;
+                list-style: none;
+                user-select: none;
+            }
+
+            .advanced-controls summary::-webkit-details-marker {
+                display: none;
+            }
+
+            .advanced-controls summary::after {
+                content: "";
+                width: 7px;
+                height: 7px;
+                border-right: 2px solid currentColor;
+                border-bottom: 2px solid currentColor;
+                transform: rotate(45deg);
+                transition: transform 0.15s ease;
+            }
+
+            .advanced-controls[open] summary::after {
+                transform: rotate(225deg);
+            }
+
+            .advanced-controls summary:hover {
+                color: #334155;
+            }
+
+            .point-field {
+                display: grid;
+                grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+                align-items: center;
+                gap: 4px;
+                min-width: 0;
+            }
+
+            .point-label {
+                color: #334155;
+                font-weight: 800;
+            }
+
+            .coord-input {
+                width: 100%;
+                min-width: 0;
+                padding: 4px;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                background: #ffffff;
+                color: #334155;
+                font-family: inherit;
+                font-size: 11px;
+            }
+
+            .coord-input:focus {
+                border-color: #5258e4;
+                outline: 2px solid rgba(82, 88, 228, 0.18);
             }
 
             .status {
@@ -333,10 +421,16 @@
             <section class="upload-grid" aria-label="Image uploads">
                 <div class="field">
                     <label class="label" for="refUpload">Background Ref</label>
+                    <label class="upload-button" for="refUpload">
+                        <span class="upload-button-text">Choose Image</span>
+                    </label>
                     <input class="file-input" type="file" id="refUpload" accept="image/*" />
                 </div>
                 <div class="field">
                     <label class="label" for="focusUpload">Focus Image</label>
+                    <label class="upload-button" for="focusUpload">
+                        <span class="upload-button-text">Choose Image</span>
+                    </label>
                     <input class="file-input" type="file" id="focusUpload" accept="image/*" />
                 </div>
             </section>
@@ -387,12 +481,31 @@
                     <button id="addToDocumentBtn" class="button button-primary" type="button" disabled>Add to Page</button>
                 </div>
 
-                <div class="stats" aria-label="Warp values">
-                    <div>TL: <span id="val0">0,0</span></div>
-                    <div>TR: <span id="val1">0,0</span></div>
-                    <div>BL: <span id="val3">0,0</span></div>
-                    <div>BR: <span id="val2">0,0</span></div>
-                </div>
+                <details class="advanced-controls">
+                    <summary>Corner coordinates</summary>
+                    <div class="stats" aria-label="Warp values">
+                        <label class="point-field">
+                            <span class="point-label">TL</span>
+                            <input class="coord-input" type="number" inputmode="numeric" data-index="0" data-axis="x" aria-label="Top left x" />
+                            <input class="coord-input" type="number" inputmode="numeric" data-index="0" data-axis="y" aria-label="Top left y" />
+                        </label>
+                        <label class="point-field">
+                            <span class="point-label">TR</span>
+                            <input class="coord-input" type="number" inputmode="numeric" data-index="1" data-axis="x" aria-label="Top right x" />
+                            <input class="coord-input" type="number" inputmode="numeric" data-index="1" data-axis="y" aria-label="Top right y" />
+                        </label>
+                        <label class="point-field">
+                            <span class="point-label">BL</span>
+                            <input class="coord-input" type="number" inputmode="numeric" data-index="3" data-axis="x" aria-label="Bottom left x" />
+                            <input class="coord-input" type="number" inputmode="numeric" data-index="3" data-axis="y" aria-label="Bottom left y" />
+                        </label>
+                        <label class="point-field">
+                            <span class="point-label">BR</span>
+                            <input class="coord-input" type="number" inputmode="numeric" data-index="2" data-axis="x" aria-label="Bottom right x" />
+                            <input class="coord-input" type="number" inputmode="numeric" data-index="2" data-axis="y" aria-label="Bottom right y" />
+                        </label>
+                    </div>
+                </details>
                 <p id="status" class="status">Initializing add-on...</p>
             </section>
         </main>
