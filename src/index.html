@@ -176,7 +176,6 @@
             .handle,
             .handle-center {
                 position: absolute;
-                border: 2px solid #ffffff;
                 border-radius: 999px;
                 transform: translate(-50%, -50%);
                 box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35);
@@ -185,21 +184,27 @@
 
             .handle {
                 z-index: 100;
-                width: 18px;
-                height: 18px;
-                background: #2563eb;
+                width: 14px;
+                height: 14px;
+                border: 2px solid #2563eb;
+                background: rgba(255, 255, 255, 0.12);
+                box-shadow:
+                    0 0 0 1px #ffffff,
+                    0 2px 8px rgba(15, 23, 42, 0.35);
                 cursor: move;
             }
 
             .handle:hover {
-                background: #ef4444;
-                transform: translate(-50%, -50%) scale(1.2);
+                border-color: #ef4444;
+                background: rgba(255, 255, 255, 0.2);
+                transform: translate(-50%, -50%) scale(1.15);
             }
 
             .handle-center {
                 z-index: 101;
-                width: 22px;
-                height: 22px;
+                width: 18px;
+                height: 18px;
+                border: 2px solid #ffffff;
                 background: #ec4899;
                 cursor: grab;
             }
@@ -308,19 +313,6 @@
                 font-size: 11px;
             }
 
-            .stat-wide {
-                display: flex;
-                grid-column: 1 / -1;
-                justify-content: space-between;
-                padding-top: 6px;
-                border-top: 1px solid #e2e8f0;
-                font-weight: 800;
-            }
-
-            .stat-depth {
-                color: #2563eb;
-            }
-
             .status {
                 min-height: 16px;
                 margin: 0;
@@ -400,14 +392,6 @@
                     <div>TR: <span id="val1">0,0</span></div>
                     <div>BL: <span id="val3">0,0</span></div>
                     <div>BR: <span id="val2">0,0</span></div>
-                    <div class="stat-wide stat-depth">
-                        <span>Z-Scale Ratio</span>
-                        <span id="valZ">1.00</span>
-                    </div>
-                    <div class="stat-wide">
-                        <span>View Zoom</span>
-                        <span id="viewZoomLabel">100%</span>
-                    </div>
                 </div>
                 <p id="status" class="status">Initializing add-on...</p>
             </section>

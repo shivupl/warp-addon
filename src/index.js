@@ -95,7 +95,6 @@ function quadCenter() {
 function applyViewTransform() {
     viewPan.style.transform = `translate(${viewTx}px, ${viewTy}px)`;
     viewZoom.style.transform = `scale(${viewS})`;
-    document.getElementById("viewZoomLabel").textContent = `${Math.round(viewS * 100)}%`;
 }
 
 function clientToContent(clientX, clientY) {
@@ -199,10 +198,6 @@ function updateUI() {
     }
 
     focusContainer.style.opacity = opacityCtrl.value;
-
-    const topWidth = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
-    const bottomWidth = Math.hypot(points[2].x - points[3].x, points[2].y - points[3].y);
-    document.getElementById("valZ").textContent = bottomWidth ? (topWidth / bottomWidth).toFixed(2) : "0.00";
 
     applyViewTransform();
 }
@@ -325,7 +320,7 @@ function drawTriangle(ctx, image, src, dst) {
     ctx.restore();
 }
 
-async function createWarpedBlob() {
+async function createWarpedBlob({ opacity = Number(opacityCtrl.value) } = {}) {
     await imageLoaded(focusImg);
 
     const { width, height } = getViewportSize();
@@ -346,7 +341,7 @@ async function createWarpedBlob() {
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.globalAlpha = Number(opacityCtrl.value);
+    ctx.globalAlpha = opacity;
 
     for (let row = 0; row < MESH_STEPS; row++) {
         for (let col = 0; col < MESH_STEPS; col++) {
@@ -386,7 +381,7 @@ async function createWarpedBlob() {
 async function downloadWarpedImage() {
     try {
         setStatus("Rendering warped PNG...");
-        const blob = await createWarpedBlob();
+        const blob = await createWarpedBlob({ opacity: 1 });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
