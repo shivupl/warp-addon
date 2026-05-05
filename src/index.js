@@ -451,13 +451,15 @@ async function addWarpedImageToDocument() {
     }
 }
 
-function resetTransform() {
+function resetTransform({ updateStatus = true } = {}) {
     points = getInitialPoints();
     viewTx = 0;
     viewTy = 0;
     viewS = 1;
     updateUI();
-    setStatus(addOnReady ? "Transformation reset." : "Waiting for Adobe Express...");
+    if (updateStatus) {
+        setStatus(addOnReady ? "Transformation reset." : "Waiting for Adobe Express...");
+    }
 }
 
 function handleWheel(event) {
@@ -502,6 +504,9 @@ function initializePlanner() {
     window.addEventListener("resize", updateUI);
 
     updateUI();
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => resetTransform({ updateStatus: false }));
+    });
 }
 
 initializePlanner();
