@@ -100,13 +100,20 @@ function getInitialPoints() {
 }
 
 function getInitialTiltState() {
-    const { width, height } = getViewportSize();
+    const initialPoints = getInitialPoints();
+    const centerX = (initialPoints[0].x + initialPoints[1].x + initialPoints[2].x + initialPoints[3].x) / 4;
+    const centerY = (initialPoints[0].y + initialPoints[1].y + initialPoints[2].y + initialPoints[3].y) / 4;
+
     return {
-        centerX: Math.round(width / 2),
-        centerY: Math.round(height / 2),
-        size: Math.round(Math.min(width, height) * 0.56),
+        centerX,
+        centerY,
         rotateX: 0,
         rotateY: 0,
+        baseCorners: initialPoints.map((point) => ({
+            x: point.x - centerX,
+            y: point.y - centerY,
+            z: 0,
+        })),
     };
 }
 
@@ -200,24 +207,36 @@ function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
 
+function createTiltStateFromPoints(sourcePoints) {
+    const center = {
+        x: (sourcePoints[0].x + sourcePoints[1].x + sourcePoints[2].x + sourcePoints[3].x) / 4,
+        y: (sourcePoints[0].y + sourcePoints[1].y + sourcePoints[2].y + sourcePoints[3].y) / 4,
+    };
+
+    return {
+        centerX: center.x,
+        centerY: center.y,
+        rotateX: 0,
+        rotateY: 0,
+        baseCorners: sourcePoints.map((point) => ({
+            x: point.x - center.x,
+            y: point.y - center.y,
+            z: 0,
+        })),
+    };
+}
+
 function getTiltPoints() {
     const { width, height } = getViewportSize();
     const perspective = Math.max(width, height) * 1.8;
-    const half = tiltState.size / 2;
     const rotateX = (tiltState.rotateX * Math.PI) / 180;
     const rotateY = (tiltState.rotateY * Math.PI) / 180;
     const cosX = Math.cos(rotateX);
     const sinX = Math.sin(rotateX);
     const cosY = Math.cos(rotateY);
     const sinY = Math.sin(rotateY);
-    const corners = [
-        { x: -half, y: -half, z: 0 },
-        { x: half, y: -half, z: 0 },
-        { x: half, y: half, z: 0 },
-        { x: -half, y: half, z: 0 },
-    ];
 
-    return corners.map((corner) => {
+    return tiltState.baseCorners.map((corner) => {
         const x1 = corner.x * cosY + corner.z * sinY;
         const z1 = -corner.x * sinY + corner.z * cosY;
         const y2 = corner.y * cosX - z1 * sinX;
@@ -233,6 +252,66 @@ function getTiltPoints() {
 
 function updateTiltPoints() {
     points = getTiltPoints();
+}
+
+function fitFrameToFocusImageAspectRatio() {
+    if (!focusImg.naturalWidth || !focusImg.naturalHeight) {
+        return;
+    }
+
+    const targetAspect = focusImg.naturalWidth / focusImg.naturalHeight;
+    const topWidth = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+    const bottomWidth = Math.hypot(points[2].x - points[3].x, points[2].y - points[3].y);
+    const leftHeight = Math.hypot(points[3].x - points[0].x, points[3].y - points[0].y);
+    const rightHeight = Math.hypot(points[2].x - points[1].x, points[2].y - points[1].y);
+    const currentWidth = (topWidth + bottomWidth) / 2;
+    const currentHeight = (leftHeight + rightHeight) / 2;
+
+    if (!currentWidth || !currentHeight) {
+        return;
+    }
+
+    const currentAspect = currentWidth / currentHeight;
+    const scaleRatio = targetAspect / currentAspect;
+    const scaleX = Math.sqrt(scaleRatio);
+    const scaleY = 1 / scaleX;
+    const center = quadCenter();
+    const horizontal = {
+        x: (points[1].x - points[0].x + points[2].x - points[3].x) / 2,
+        y: (points[1].y - points[0].y + points[2].y - points[3].y) / 2,
+    };
+    const horizontalLength = Math.hypot(horizontal.x, horizontal.y) || 1;
+    const xAxis = {
+        x: horizontal.x / horizontalLength,
+        y: horizontal.y / horizontalLength,
+    };
+    const averageVertical = {
+        x: (points[3].x - points[0].x + points[2].x - points[1].x) / 2,
+        y: (points[3].y - points[0].y + points[2].y - points[1].y) / 2,
+    };
+    let yAxis = { x: -xAxis.y, y: xAxis.x };
+
+    if (yAxis.x * averageVertical.x + yAxis.y * averageVertical.y < 0) {
+        yAxis = { x: -yAxis.x, y: -yAxis.y };
+    }
+
+    points = points.map((point) => {
+        const offset = {
+            x: point.x - center.x,
+            y: point.y - center.y,
+        };
+        const localX = offset.x * xAxis.x + offset.y * xAxis.y;
+        const localY = offset.x * yAxis.x + offset.y * yAxis.y;
+
+        return {
+            x: center.x + xAxis.x * localX * scaleX + yAxis.x * localY * scaleY,
+            y: center.y + xAxis.y * localX * scaleX + yAxis.y * localY * scaleY,
+        };
+    });
+
+    if (activeMode === "tilt") {
+        tiltState = createTiltStateFromPoints(points);
+    }
 }
 
 function updateUI() {
@@ -312,14 +391,23 @@ function setupUploader(inputId, targetImg) {
 
         const reader = new FileReader();
         reader.addEventListener("load", () => {
-            targetImg.src = reader.result;
             uploadButton?.classList.add("is-uploaded");
             const buttonText = uploadButton?.querySelector(".upload-button-text");
             if (buttonText) {
                 buttonText.textContent = "Uploaded";
             }
-            updateUI();
-            setStatus(inputId === "focusUpload" ? "Focus image loaded. Drag the corners to warp it." : "Reference image loaded.");
+            targetImg.addEventListener(
+                "load",
+                () => {
+                    if (inputId === "focusUpload") {
+                        fitFrameToFocusImageAspectRatio();
+                    }
+                    updateUI();
+                    setStatus(inputId === "focusUpload" ? "Focus image loaded. Drag the corners to warp it." : "Reference image loaded.");
+                },
+                { once: true },
+            );
+            targetImg.src = reader.result;
         });
         reader.readAsDataURL(file);
     });
@@ -342,14 +430,10 @@ function updatePointFromInput(input) {
 }
 
 function setMode(mode) {
+    const previousMode = activeMode;
     activeMode = mode;
-    if (mode === "tilt") {
-        const center = quadCenter();
-        tiltState = {
-            ...(tiltState || getInitialTiltState()),
-            centerX: center.x,
-            centerY: center.y,
-        };
+    if (mode === "tilt" && previousMode !== "tilt") {
+        tiltState = createTiltStateFromPoints(points);
         updateTiltPoints();
     }
     modeTabs.forEach((tab) => {
@@ -601,8 +685,10 @@ async function addWarpedImageToDocument() {
 
 function resetTransform({ updateStatus = true } = {}) {
     points = getInitialPoints();
+    fitFrameToFocusImageAspectRatio();
     tiltState = getInitialTiltState();
     if (activeMode === "tilt") {
+        tiltState = createTiltStateFromPoints(points);
         updateTiltPoints();
     }
     viewTx = 0;
