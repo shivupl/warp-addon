@@ -235,6 +235,29 @@
                 cursor: grabbing;
             }
 
+            .edge-handle {
+                display: none;
+                position: absolute;
+                z-index: 102;
+                width: 28px;
+                height: 10px;
+                border: 2px solid #ffffff;
+                border-radius: 999px;
+                background: #2563eb;
+                transform: translate(-50%, -50%);
+                touch-action: none;
+            }
+
+            .edge-handle[data-edge="left"],
+            .edge-handle[data-edge="right"] {
+                width: 10px;
+                height: 28px;
+            }
+
+            .edge-handle:hover {
+                background: #ef4444;
+            }
+
             .controls {
                 display: flex;
                 flex-direction: column;
@@ -243,6 +266,32 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 12px;
                 background: #f8fafc;
+            }
+
+            .mode-tabs {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 6px;
+                padding: 3px;
+                border: 1px solid #e2e8f0;
+                border-radius: 999px;
+                background: #ffffff;
+            }
+
+            .mode-tab {
+                min-height: 30px;
+                border: 0;
+                border-radius: 999px;
+                background: transparent;
+                color: #64748b;
+                font-size: 12px;
+                font-weight: 800;
+                cursor: pointer;
+            }
+
+            .mode-tab.is-active {
+                background: #5258e4;
+                color: #ffffff;
             }
 
             .control-row {
@@ -260,6 +309,21 @@
             .range {
                 width: min(180px, 52%);
                 accent-color: #2563eb;
+            }
+
+            body[data-mode="tilt"] .warp-only,
+            body[data-mode="sides"] .warp-only {
+                display: none;
+            }
+
+            body[data-mode="tilt"] .handle,
+            body[data-mode="sides"] .handle {
+                display: none;
+            }
+
+            body[data-mode="tilt"] .edge-handle,
+            body[data-mode="sides"] .edge-handle {
+                display: block;
             }
 
             .checkbox-label {
@@ -457,19 +521,29 @@
                         <div id="h1" class="handle" data-index="1" title="Top right"></div>
                         <div id="h2" class="handle" data-index="2" title="Bottom right"></div>
                         <div id="h3" class="handle" data-index="3" title="Bottom left"></div>
+                        <div class="edge-handle" data-edge="top" title="Drag top edge"></div>
+                        <div class="edge-handle" data-edge="right" title="Drag right edge"></div>
+                        <div class="edge-handle" data-edge="bottom" title="Drag bottom edge"></div>
+                        <div class="edge-handle" data-edge="left" title="Drag left edge"></div>
                         <div id="centerGrab" class="handle-center" title="Drag to move the whole focus quad"></div>
                     </div>
                 </div>
             </section>
 
             <section class="controls" aria-label="Warp controls">
+                <div class="mode-tabs" role="tablist" aria-label="Transform mode">
+                    <button class="mode-tab is-active" type="button" data-mode="warp" role="tab" aria-selected="true">Perspective</button>
+                    <button class="mode-tab" type="button" data-mode="tilt" role="tab" aria-selected="false">Free Tilt</button>
+                    <button class="mode-tab" type="button" data-mode="sides" role="tab" aria-selected="false">Warp (Sides)</button>
+                </div>
+
                 <div class="control-row">
                     <label class="label" for="opacityCtrl">Focus Opacity</label>
                     <input class="range" type="range" id="opacityCtrl" min="0" max="1" step="0.01" value="0.72" />
                 </div>
 
                 <div class="control-row">
-                    <label class="checkbox-label" for="gridSnap">
+                    <label class="checkbox-label warp-only" for="gridSnap">
                         <input type="checkbox" id="gridSnap" />
                         Grid Snap
                     </label>
@@ -481,7 +555,7 @@
                     <button id="addToDocumentBtn" class="button button-primary" type="button" disabled>Add to Page</button>
                 </div>
 
-                <details class="advanced-controls">
+                <details class="advanced-controls warp-only">
                     <summary>Corner coordinates</summary>
                     <div class="stats" aria-label="Warp values">
                         <label class="point-field">

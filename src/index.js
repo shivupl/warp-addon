@@ -12,7 +12,9 @@ const resetBtn = document.getElementById("resetBtn");
 const downloadBtn = document.getElementById("downloadBtn");
 const addToDocumentBtn = document.getElementById("addToDocumentBtn");
 const statusText = document.getElementById("status");
+const modeTabs = Array.from(document.querySelectorAll(".mode-tab"));
 const handles = Array.from({ length: 4 }, (_, index) => document.getElementById(`h${index}`));
+const edgeHandles = Array.from(document.querySelectorAll(".edge-handle"));
 const centerGrab = document.getElementById("centerGrab");
 const coordinateInputs = Array.from(document.querySelectorAll(".coord-input"));
 
@@ -55,9 +57,12 @@ const FOCUS_PLACEHOLDER =
 const EXPORT_SIZE = 1200;
 const GRID_SIZE = 20;
 const MESH_STEPS = 42;
+const MAX_TILT_DEGREES = 78;
+const TILT_DRAG_SENSITIVITY = 0.7;
 
 let points = [];
 let activeHandle = null;
+let activeEdge = null;
 let isDraggingWhole = false;
 let lastContentPos = { x: 0, y: 0 };
 let viewTx = 0;
@@ -66,6 +71,8 @@ let viewS = 1;
 let isViewPan = false;
 let lastPanClient = { x: 0, y: 0 };
 let addOnReady = false;
+let activeMode = "warp";
+let tiltState = null;
 
 function setStatus(message) {
     statusText.textContent = message;
@@ -90,6 +97,17 @@ function getInitialPoints() {
         { x: right, y: bottom },
         { x: left, y: bottom },
     ];
+}
+
+function getInitialTiltState() {
+    const { width, height } = getViewportSize();
+    return {
+        centerX: Math.round(width / 2),
+        centerY: Math.round(height / 2),
+        size: Math.round(Math.min(width, height) * 0.56),
+        rotateX: 0,
+        rotateY: 0,
+    };
 }
 
 function quadCenter() {
@@ -178,12 +196,77 @@ function projectPoint(h, x, y) {
     };
 }
 
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+
+function getTiltPoints() {
+    const { width, height } = getViewportSize();
+    const perspective = Math.max(width, height) * 1.8;
+    const half = tiltState.size / 2;
+    const rotateX = (tiltState.rotateX * Math.PI) / 180;
+    const rotateY = (tiltState.rotateY * Math.PI) / 180;
+    const cosX = Math.cos(rotateX);
+    const sinX = Math.sin(rotateX);
+    const cosY = Math.cos(rotateY);
+    const sinY = Math.sin(rotateY);
+    const corners = [
+        { x: -half, y: -half, z: 0 },
+        { x: half, y: -half, z: 0 },
+        { x: half, y: half, z: 0 },
+        { x: -half, y: half, z: 0 },
+    ];
+
+    return corners.map((corner) => {
+        const x1 = corner.x * cosY + corner.z * sinY;
+        const z1 = -corner.x * sinY + corner.z * cosY;
+        const y2 = corner.y * cosX - z1 * sinX;
+        const z2 = corner.y * sinX + z1 * cosX;
+        const depthScale = perspective / (perspective + z2);
+
+        return {
+            x: tiltState.centerX + x1 * depthScale,
+            y: tiltState.centerY + y2 * depthScale,
+        };
+    });
+}
+
+function updateTiltPoints() {
+    points = getTiltPoints();
+}
+
 function updateUI() {
     const { width, height } = getViewportSize();
+    document.body.dataset.mode = activeMode;
 
     points.forEach((p, index) => {
         handles[index].style.left = `${p.x}px`;
         handles[index].style.top = `${p.y}px`;
+    });
+
+    const edgePositions = {
+        top: {
+            x: (points[0].x + points[1].x) / 2,
+            y: (points[0].y + points[1].y) / 2,
+        },
+        right: {
+            x: (points[1].x + points[2].x) / 2,
+            y: (points[1].y + points[2].y) / 2,
+        },
+        bottom: {
+            x: (points[2].x + points[3].x) / 2,
+            y: (points[2].y + points[3].y) / 2,
+        },
+        left: {
+            x: (points[3].x + points[0].x) / 2,
+            y: (points[3].y + points[0].y) / 2,
+        },
+    };
+
+    edgeHandles.forEach((handle) => {
+        const position = edgePositions[handle.dataset.edge];
+        handle.style.left = `${position.x}px`;
+        handle.style.top = `${position.y}px`;
     });
 
     coordinateInputs.forEach((input) => {
@@ -258,6 +341,25 @@ function updatePointFromInput(input) {
     updateUI();
 }
 
+function setMode(mode) {
+    activeMode = mode;
+    if (mode === "tilt") {
+        const center = quadCenter();
+        tiltState = {
+            ...(tiltState || getInitialTiltState()),
+            centerX: center.x,
+            centerY: center.y,
+        };
+        updateTiltPoints();
+    }
+    modeTabs.forEach((tab) => {
+        const isActive = tab.dataset.mode === mode;
+        tab.classList.toggle("is-active", isActive);
+        tab.setAttribute("aria-selected", String(isActive));
+    });
+    updateUI();
+}
+
 function handlePointerDown(event) {
     const p = clientToContent(event.clientX, event.clientY);
 
@@ -270,8 +372,17 @@ function handlePointerDown(event) {
     }
 
     const handleIndex = event.target.dataset?.index;
-    if (handleIndex !== undefined && event.target.classList.contains("handle")) {
+    if (activeMode === "warp" && handleIndex !== undefined && event.target.classList.contains("handle")) {
         activeHandle = Number.parseInt(handleIndex, 10);
+        event.target.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        return;
+    }
+
+    const edge = event.target.dataset?.edge;
+    if ((activeMode === "tilt" || activeMode === "sides") && edge && event.target.classList.contains("edge-handle")) {
+        activeEdge = edge;
+        lastContentPos = p;
         event.target.setPointerCapture(event.pointerId);
         event.preventDefault();
         return;
@@ -294,7 +405,7 @@ function handlePointerMove(event) {
         return;
     }
 
-    if (activeHandle === null && !isDraggingWhole) {
+    if (activeHandle === null && activeEdge === null && !isDraggingWhole) {
         return;
     }
 
@@ -304,10 +415,42 @@ function handlePointerMove(event) {
         const x = gridSnap.checked ? Math.round(p.x / GRID_SIZE) * GRID_SIZE : p.x;
         const y = gridSnap.checked ? Math.round(p.y / GRID_SIZE) * GRID_SIZE : p.y;
         points[activeHandle] = { x, y };
+    } else if (activeEdge !== null) {
+        const dx = p.x - lastContentPos.x;
+        const dy = p.y - lastContentPos.y;
+        if (activeMode === "tilt") {
+            tiltState = {
+                ...tiltState,
+                rotateX: clamp(tiltState.rotateX - dy * TILT_DRAG_SENSITIVITY, -MAX_TILT_DEGREES, MAX_TILT_DEGREES),
+                rotateY: clamp(tiltState.rotateY + dx * TILT_DRAG_SENSITIVITY, -MAX_TILT_DEGREES, MAX_TILT_DEGREES),
+            };
+            updateTiltPoints();
+        } else {
+            const edgePointIndexes = {
+                top: [0, 1],
+                right: [1, 2],
+                bottom: [2, 3],
+                left: [3, 0],
+            };
+
+            points = points.map((point, index) =>
+                edgePointIndexes[activeEdge].includes(index) ? { x: point.x + dx, y: point.y + dy } : point,
+            );
+        }
+        lastContentPos = p;
     } else {
         const dx = p.x - lastContentPos.x;
         const dy = p.y - lastContentPos.y;
-        points = points.map((point) => ({ x: point.x + dx, y: point.y + dy }));
+        if (activeMode === "tilt") {
+            tiltState = {
+                ...tiltState,
+                centerX: tiltState.centerX + dx,
+                centerY: tiltState.centerY + dy,
+            };
+            updateTiltPoints();
+        } else {
+            points = points.map((point) => ({ x: point.x + dx, y: point.y + dy }));
+        }
         lastContentPos = p;
     }
 
@@ -316,6 +459,7 @@ function handlePointerMove(event) {
 
 function stopDragging() {
     activeHandle = null;
+    activeEdge = null;
     isDraggingWhole = false;
     isViewPan = false;
 }
@@ -417,14 +561,18 @@ async function createWarpedBlob({ opacity = Number(opacityCtrl.value) } = {}) {
     });
 }
 
+function createOutputBlob(options) {
+    return createWarpedBlob(options);
+}
+
 async function downloadWarpedImage() {
     try {
-        setStatus("Rendering warped PNG...");
-        const blob = await createWarpedBlob({ opacity: 1 });
+        setStatus("Rendering PNG...");
+        const blob = await createOutputBlob({ opacity: 1 });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = "perspective-warp.png";
+        link.download = activeMode === "tilt" ? "free-tilt.png" : "perspective-warp.png";
         link.click();
         URL.revokeObjectURL(url);
         setStatus("PNG rendered.");
@@ -441,9 +589,9 @@ async function addWarpedImageToDocument() {
     try {
         addToDocumentBtn.disabled = true;
         setStatus("Rendering and adding image to your Express page...");
-        const blob = await createWarpedBlob();
-        await addOnUISdk.app.document.addImage(blob, { title: "Perspective warp" });
-        setStatus("Warped PNG added to the current page.");
+        const blob = await createOutputBlob({ opacity: 1 });
+        await addOnUISdk.app.document.addImage(blob, { title: activeMode === "tilt" ? "Free tilt" : "Perspective warp" });
+        setStatus("PNG added to the current page.");
     } catch (error) {
         setStatus(error.message || "Could not add the warped image to the page.");
     } finally {
@@ -453,6 +601,10 @@ async function addWarpedImageToDocument() {
 
 function resetTransform({ updateStatus = true } = {}) {
     points = getInitialPoints();
+    tiltState = getInitialTiltState();
+    if (activeMode === "tilt") {
+        updateTiltPoints();
+    }
     viewTx = 0;
     viewTy = 0;
     viewS = 1;
@@ -485,6 +637,7 @@ function initializePlanner() {
     focusImg.addEventListener("dragstart", (event) => event.preventDefault());
 
     points = getInitialPoints();
+    tiltState = getInitialTiltState();
     setupUploader("refUpload", refImg);
     setupUploader("focusUpload", focusImg);
 
@@ -497,6 +650,9 @@ function initializePlanner() {
     resetBtn.addEventListener("click", resetTransform);
     downloadBtn.addEventListener("click", downloadWarpedImage);
     addToDocumentBtn.addEventListener("click", addWarpedImageToDocument);
+    modeTabs.forEach((tab) => {
+        tab.addEventListener("click", () => setMode(tab.dataset.mode));
+    });
     coordinateInputs.forEach((input) => {
         input.addEventListener("input", () => updatePointFromInput(input));
         input.addEventListener("change", updateUI);
