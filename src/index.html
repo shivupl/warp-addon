@@ -9,7 +9,7 @@
         <style>
             :root {
                 color: #172033;
-                background: #ffffff;
+                background: #fafafa;
                 font-family:
                     system-ui,
                     -apple-system,
@@ -25,7 +25,7 @@
             body {
                 margin: 0;
                 min-width: 320px;
-                background: #ffffff;
+                background: #fafafa;
             }
 
             button,
@@ -39,50 +39,41 @@
                 gap: 14px;
                 max-width: 520px;
                 margin: 0 auto;
-                padding: 16px;
+                padding: 16px 14px;
             }
 
             .app-header {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
                 text-align: center;
             }
 
             .app-title {
                 margin: 0;
-                color: #0f172a;
-                font-size: 22px;
-                font-weight: 800;
-                letter-spacing: -0.04em;
-            }
-
-            .app-subtitle {
-                margin: 0;
-                color: #64748b;
-                font-size: 12px;
-                line-height: 1.35;
+                color: #111827;
+                font-size: 20px;
+                font-weight: 720;
+                letter-spacing: -0.03em;
             }
 
             .upload-grid {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
+                gap: 12px;
             }
 
             .field {
                 display: flex;
                 min-width: 0;
                 flex-direction: column;
-                gap: 5px;
+                gap: 6px;
             }
 
             .label {
-                color: #64748b;
-                font-size: 10px;
-                font-weight: 800;
-                letter-spacing: 0.08em;
-                text-transform: uppercase;
+                color: #6b7280;
+                font-size: 11px;
+                font-weight: 650;
+                letter-spacing: 0.01em;
             }
 
             .file-input {
@@ -101,12 +92,12 @@
                 min-height: 34px;
                 width: 100%;
                 padding: 8px 12px;
-                border: 1px solid #dbe2ea;
-                border-radius: 999px;
-                background: #eef2ff;
-                color: #3730a3;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                background: #ffffff;
+                color: #374151;
                 font-size: 12px;
-                font-weight: 800;
+                font-weight: 680;
                 cursor: pointer;
                 transition:
                     background 0.15s ease,
@@ -115,8 +106,8 @@
             }
 
             .upload-button:hover {
-                border-color: #c7d2fe;
-                background: #e0e7ff;
+                border-color: #d1d5db;
+                background: #f9fafb;
             }
 
             .upload-button.is-uploaded {
@@ -261,49 +252,53 @@
             .controls {
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
-                padding: 14px;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                background: #f8fafc;
+                gap: 10px;
+                padding: 12px;
+                border: 1px solid #e5e7eb;
+                border-radius: 14px;
+                background: #ffffff;
             }
 
             .mode-tabs {
                 display: grid;
                 grid-template-columns: 1fr 1fr 1fr;
-                gap: 6px;
-                padding: 3px;
-                border: 1px solid #e2e8f0;
-                border-radius: 999px;
-                background: #ffffff;
+                gap: 4px;
+                padding: 4px;
+                border: 1px solid #eeeeee;
+                border-radius: 14px;
+                background: #f7f7f7;
             }
 
             .mode-tab {
                 min-height: 30px;
                 border: 0;
-                border-radius: 999px;
+                border-radius: 10px;
                 background: transparent;
-                color: #64748b;
-                font-size: 12px;
-                font-weight: 800;
+                color: #6b7280;
+                font-size: 11px;
+                font-weight: 650;
                 cursor: pointer;
+                transition:
+                    background 0.15s ease,
+                    color 0.15s ease;
             }
 
             .mode-tab.is-active {
-                background: #5258e4;
-                color: #ffffff;
+                background: #ffffff;
+                color: #111827;
             }
 
             .control-row {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                gap: 12px;
+                gap: 10px;
+                flex-wrap: wrap;
             }
 
             .control-row + .control-row {
-                padding-top: 10px;
-                border-top: 1px solid #e2e8f0;
+                padding-top: 8px;
+                border-top: 1px solid #f1f5f9;
             }
 
             .range {
@@ -329,12 +324,10 @@
             .checkbox-label {
                 display: inline-flex;
                 align-items: center;
-                gap: 8px;
-                color: #475569;
+                gap: 6px;
+                color: #4b5563;
                 font-size: 12px;
-                font-weight: 800;
-                letter-spacing: 0.04em;
-                text-transform: uppercase;
+                font-weight: 620;
             }
 
             .button-row {
@@ -346,12 +339,12 @@
             .button {
                 min-height: 34px;
                 padding: 7px 10px;
-                border: 1px solid #cbd5e1;
-                border-radius: 999px;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
                 background: #ffffff;
-                color: #334155;
+                color: #374151;
                 font-size: 12px;
-                font-weight: 750;
+                font-weight: 650;
                 cursor: pointer;
                 transition:
                     background 0.15s ease,
@@ -360,18 +353,18 @@
             }
 
             .button:hover:not(:disabled) {
-                background: #f1f5f9;
+                background: #f9fafb;
             }
 
             .button-primary {
-                border-color: #5258e4;
-                background: #5258e4;
+                border-color: #111827;
+                background: #111827;
                 color: #ffffff;
             }
 
             .button-primary:hover:not(:disabled) {
-                border-color: #4046ca;
-                background: #4046ca;
+                border-color: #1f2937;
+                background: #1f2937;
             }
 
             .button:disabled {
@@ -386,9 +379,9 @@
                 grid-template-columns: 1fr 1fr;
                 gap: 8px 10px;
                 padding: 10px;
-                border: 1px solid #e2e8f0;
+                border: 1px solid #eeeeee;
                 border-radius: 10px;
-                background: #ffffff;
+                background: #fafafa;
                 color: #475569;
                 font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
                 font-size: 11px;
@@ -396,7 +389,7 @@
 
             .advanced-controls {
                 padding-top: 8px;
-                border-top: 1px solid #e2e8f0;
+                border-top: 1px solid #f1f5f9;
             }
 
             .advanced-controls summary {
@@ -405,9 +398,9 @@
                 justify-content: space-between;
                 gap: 8px;
                 min-height: 32px;
-                color: #64748b;
+                color: #6b7280;
                 font-size: 11px;
-                font-weight: 750;
+                font-weight: 650;
                 cursor: pointer;
                 list-style: none;
                 user-select: none;
