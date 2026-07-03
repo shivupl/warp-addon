@@ -7,6 +7,7 @@ const focusContainer = document.getElementById("focus-container");
 const focusImg = document.getElementById("focusImg");
 const refImg = document.getElementById("refImg");
 const opacityCtrl = document.getElementById("opacityCtrl");
+const refToggle = document.getElementById("refToggle");
 const gridSnap = document.getElementById("gridSnap");
 const resetBtn = document.getElementById("resetBtn");
 const downloadBtn = document.getElementById("downloadBtn");
@@ -375,6 +376,7 @@ function updateUI() {
     }
 
     focusContainer.style.opacity = opacityCtrl.value;
+    refImg.style.display = refToggle.checked ? "block" : "none";
 
     applyViewTransform();
 }
@@ -733,6 +735,7 @@ function initializePlanner() {
     window.addEventListener("pointercancel", stopDragging);
     viewport.addEventListener("wheel", handleWheel, { passive: false });
     opacityCtrl.addEventListener("input", updateUI);
+    refToggle.addEventListener("change", updateUI);
     resetBtn.addEventListener("click", resetTransform);
     downloadBtn.addEventListener("click", downloadWarpedImage);
     addToDocumentBtn.addEventListener("click", addWarpedImageToDocument);
