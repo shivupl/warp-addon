@@ -208,6 +208,40 @@ function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
 
+function cross2D(a, b, c) {
+    return (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+}
+
+/** Perspective warp needs a convex quad; bow-tie corners break the homography. */
+function isConvexQuad(pts) {
+    let sign = 0;
+
+    for (let i = 0; i < 4; i++) {
+        const z = cross2D(pts[i], pts[(i + 1) % 4], pts[(i + 2) % 4]);
+        if (Math.abs(z) < 1e-4) {
+            continue;
+        }
+
+        const s = Math.sign(z);
+        if (sign === 0) {
+            sign = s;
+        } else if (s !== sign) {
+            return false;
+        }
+    }
+
+    return sign !== 0;
+}
+
+function tryUpdatePoints(nextPoints) {
+    if (activeMode === "tilt" || isConvexQuad(nextPoints)) {
+        points = nextPoints;
+        return true;
+    }
+
+    return false;
+}
+
 function createTiltStateFromPoints(sourcePoints) {
     const center = {
         x: (sourcePoints[0].x + sourcePoints[1].x + sourcePoints[2].x + sourcePoints[3].x) / 4,
@@ -364,13 +398,15 @@ function updateUI() {
     centerGrab.style.top = `${center.y}px`;
 
     try {
-        const from = [
-            { x: 0, y: 0 },
-            { x: width, y: 0 },
-            { x: width, y: height },
-            { x: 0, y: height },
-        ];
-        focusContainer.style.transform = getTransform(from, points).css;
+        if (activeMode === "tilt" || isConvexQuad(points)) {
+            const from = [
+                { x: 0, y: 0 },
+                { x: width, y: 0 },
+                { x: width, y: height },
+                { x: 0, y: height },
+            ];
+            focusContainer.style.transform = getTransform(from, points).css;
+        }
     } catch (error) {
         setStatus(error.message);
     }
@@ -424,10 +460,15 @@ function updatePointFromInput(input) {
         return;
     }
 
-    points[index] = {
-        ...points[index],
-        [axis]: value,
-    };
+    const previous = { ...points[index] };
+    const nextPoints = points.map((point, pointIndex) =>
+        pointIndex === index ? { ...point, [axis]: value } : point,
+    );
+
+    if (!tryUpdatePoints(nextPoints)) {
+        points[index] = previous;
+    }
+
     updateUI();
 }
 
@@ -500,7 +541,13 @@ function handlePointerMove(event) {
     if (activeHandle !== null) {
         const x = gridSnap.checked ? Math.round(p.x / GRID_SIZE) * GRID_SIZE : p.x;
         const y = gridSnap.checked ? Math.round(p.y / GRID_SIZE) * GRID_SIZE : p.y;
-        points[activeHandle] = { x, y };
+        const nextPoints = points.map((point, index) =>
+            index === activeHandle ? { x, y } : point,
+        );
+
+        if (!tryUpdatePoints(nextPoints)) {
+            return;
+        }
     } else if (activeEdge !== null) {
         const dx = p.x - lastContentPos.x;
         const dy = p.y - lastContentPos.y;
@@ -519,9 +566,13 @@ function handlePointerMove(event) {
                 left: [3, 0],
             };
 
-            points = points.map((point, index) =>
+            const nextPoints = points.map((point, index) =>
                 edgePointIndexes[activeEdge].includes(index) ? { x: point.x + dx, y: point.y + dy } : point,
             );
+
+            if (!tryUpdatePoints(nextPoints)) {
+                return;
+            }
         }
         lastContentPos = p;
     } else {
@@ -591,6 +642,10 @@ function drawTriangle(ctx, image, src, dst) {
 
 async function createWarpedBlob({ opacity = Number(opacityCtrl.value) } = {}) {
     await imageLoaded(focusImg);
+
+    if (!isConvexQuad(points)) {
+        throw new Error("Corner arrangement is invalid. Adjust corners so they do not cross.");
+    }
 
     const { width, height } = getViewportSize();
     const scale = EXPORT_SIZE / Math.max(width, height);

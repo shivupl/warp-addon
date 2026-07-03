@@ -143,11 +143,11 @@
             #viewZoom {
                 width: 100%;
                 height: 100%;
-                cursor: grab;
+                cursor: default;
             }
 
             #viewZoom:active {
-                cursor: grabbing;
+                cursor: default;
             }
 
             .ref-image {
@@ -199,7 +199,7 @@
                 height: 14px;
                 border: 2px solid #2563eb;
                 background: rgba(255, 255, 255, 0.12);
-                cursor: move;
+                cursor: grab;
             }
 
             .handle:hover {
@@ -208,13 +208,17 @@
                 transform: translate(-50%, -50%) scale(1.15);
             }
 
+            .handle:active {
+                cursor: grabbing;
+            }
+
             .handle-center {
                 z-index: 101;
                 width: 18px;
                 height: 18px;
                 border: 2px solid #ffffff;
                 background: #ec4899;
-                cursor: grab;
+                cursor: move;
             }
 
             .handle-center:hover {
@@ -223,7 +227,7 @@
             }
 
             .handle-center:active {
-                cursor: grabbing;
+                cursor: move;
             }
 
             .edge-handle {
@@ -237,6 +241,7 @@
                 background: #2563eb;
                 transform: translate(-50%, -50%);
                 touch-action: none;
+                cursor: grab;
             }
 
             .edge-handle[data-edge="left"],
@@ -247,6 +252,10 @@
 
             .edge-handle:hover {
                 background: #ef4444;
+            }
+
+            .edge-handle:active {
+                cursor: grabbing;
             }
 
             .controls {
