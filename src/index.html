@@ -42,20 +42,6 @@
                 padding: 16px 14px;
             }
 
-            .app-header {
-                display: flex;
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .app-title {
-                margin: 0;
-                color: #111827;
-                font-size: 20px;
-                font-weight: 720;
-                letter-spacing: -0.03em;
-            }
-
             .upload-grid {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -167,6 +153,11 @@
                 width: 100%;
                 height: 100%;
                 pointer-events: none;
+            }
+
+            #grid-overlay line {
+                stroke: rgba(15, 23, 42, 0.2);
+                stroke-width: 1;
             }
 
             #focus-container {
@@ -479,24 +470,21 @@
     </head>
     <body>
         <main class="app">
-            <header class="app-header">
-                <h1 class="app-title">Perspective Warp</h1>
-            </header>
 
             <section class="upload-grid" aria-label="Image uploads">
-                <div class="field">
-                    <label class="label" for="refUpload">Background Ref</label>
-                    <label class="upload-button" for="refUpload">
-                        <span class="upload-button-text">Choose Image</span>
-                    </label>
-                    <input class="file-input" type="file" id="refUpload" accept="image/*" />
-                </div>
                 <div class="field">
                     <label class="label" for="focusUpload">Focus Image</label>
                     <label class="upload-button" for="focusUpload">
                         <span class="upload-button-text">Choose Image</span>
                     </label>
                     <input class="file-input" type="file" id="focusUpload" accept="image/*" />
+                </div>
+                <div class="field">
+                    <label class="label" for="refUpload">Background Ref</label>
+                    <label class="upload-button" for="refUpload">
+                        <span class="upload-button-text">Choose Image</span>
+                    </label>
+                    <input class="file-input" type="file" id="refUpload" accept="image/*" />
                 </div>
             </section>
 
@@ -505,14 +493,7 @@
                     <div id="viewZoom">
                         <img class="ref-image" id="refImg" alt="Reference" draggable="false" />
 
-                        <svg id="grid-overlay" aria-hidden="true">
-                            <defs>
-                                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(15,23,42,0.16)" stroke-width="0.75" />
-                                </pattern>
-                            </defs>
-                            <rect width="100%" height="100%" fill="url(#grid)" />
-                        </svg>
+                        <svg id="grid-overlay" aria-hidden="true"></svg>
 
                         <div id="focus-container">
                             <img id="focusImg" alt="Focus" draggable="false" />
@@ -561,7 +542,7 @@
                 </div>
 
                 <details class="advanced-controls warp-only">
-                    <summary>Corner coordinates</summary>
+                    <summary>Corner coordinates (Precision Adjustments)</summary>
                     <div class="stats" aria-label="Warp values">
                         <label class="point-field">
                             <span class="point-label">TL</span>

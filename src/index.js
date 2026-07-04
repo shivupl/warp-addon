@@ -9,6 +9,7 @@ const refImg = document.getElementById("refImg");
 const opacityCtrl = document.getElementById("opacityCtrl");
 const refToggle = document.getElementById("refToggle");
 const gridSnap = document.getElementById("gridSnap");
+const gridOverlay = document.getElementById("grid-overlay");
 const resetBtn = document.getElementById("resetBtn");
 const downloadBtn = document.getElementById("downloadBtn");
 const addToDocumentBtn = document.getElementById("addToDocumentBtn");
@@ -56,7 +57,7 @@ const FOCUS_PLACEHOLDER =
 </svg>`);
 
 const EXPORT_SIZE = 1200;
-const GRID_SIZE = 20;
+const GRID_DIVISIONS = 12;
 const MESH_STEPS = 42;
 const MAX_TILT_DEGREES = 78;
 const TILT_DRAG_SENSITIVITY = 0.7;
@@ -74,6 +75,7 @@ let lastPanClient = { x: 0, y: 0 };
 let addOnReady = false;
 let activeMode = "warp";
 let tiltState = null;
+let gridFrame = null;
 
 function setStatus(message) {
     statusText.textContent = message;
@@ -122,6 +124,71 @@ function quadCenter() {
     const cx = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
     const cy = (points[0].y + points[1].y + points[2].y + points[3].y) / 4;
     return { x: cx, y: cy };
+}
+
+function syncGridFrame() {
+    const frameWidth = points[1].x - points[0].x;
+    const frameHeight = points[3].y - points[0].y;
+
+    if (frameWidth <= 0 || frameHeight <= 0) {
+        gridFrame = null;
+        return;
+    }
+
+    gridFrame = {
+        originX: points[0].x,
+        originY: points[0].y,
+        stepX: frameWidth / GRID_DIVISIONS,
+        stepY: frameHeight / GRID_DIVISIONS,
+    };
+}
+
+function snapPointToGrid(x, y) {
+    if (!gridFrame) {
+        return { x, y };
+    }
+
+    const { originX, originY, stepX, stepY } = gridFrame;
+
+    return {
+        x: originX + Math.round((x - originX) / stepX) * stepX,
+        y: originY + Math.round((y - originY) / stepY) * stepY,
+    };
+}
+
+function updateGridOverlay() {
+    if (!gridOverlay) {
+        return;
+    }
+
+    const { width, height } = getViewportSize();
+    gridOverlay.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+    if (!gridSnap.checked || !gridFrame) {
+        gridOverlay.innerHTML = "";
+        gridOverlay.hidden = true;
+        return;
+    }
+
+    const { originX, originY, stepX, stepY } = gridFrame;
+    const lines = [];
+    const startColumn = Math.floor(-originX / stepX) - 1;
+    const endColumn = Math.ceil((width - originX) / stepX) + 1;
+    const startRow = Math.floor(-originY / stepY) - 1;
+    const endRow = Math.ceil((height - originY) / stepY) + 1;
+
+    for (let column = startColumn; column <= endColumn; column += 1) {
+        const x = originX + column * stepX;
+        lines.push(`<line x1="${x}" y1="0" x2="${x}" y2="${height}" />`);
+    }
+
+    for (let row = startRow; row <= endRow; row += 1) {
+        const y = originY + row * stepY;
+        lines.push(`<line x1="0" y1="${y}" x2="${width}" y2="${y}" />`);
+    }
+
+    gridOverlay.innerHTML = lines.join("");
+    gridOverlay.hidden = false;
 }
 
 function applyViewTransform() {
@@ -413,6 +480,7 @@ function updateUI() {
 
     focusContainer.style.opacity = opacityCtrl.value;
     refImg.style.display = refToggle.checked ? "block" : "none";
+    updateGridOverlay();
 
     applyViewTransform();
 }
@@ -439,6 +507,7 @@ function setupUploader(inputId, targetImg) {
                 () => {
                     if (inputId === "focusUpload") {
                         fitFrameToFocusImageAspectRatio();
+                        syncGridFrame();
                     }
                     updateUI();
                     setStatus(inputId === "focusUpload" ? "Focus image loaded. Drag the corners to warp it." : "Reference image loaded.");
@@ -539,10 +608,9 @@ function handlePointerMove(event) {
     const p = clientToContent(event.clientX, event.clientY);
 
     if (activeHandle !== null) {
-        const x = gridSnap.checked ? Math.round(p.x / GRID_SIZE) * GRID_SIZE : p.x;
-        const y = gridSnap.checked ? Math.round(p.y / GRID_SIZE) * GRID_SIZE : p.y;
+        const snapped = gridSnap.checked ? snapPointToGrid(p.x, p.y) : p;
         const nextPoints = points.map((point, index) =>
-            index === activeHandle ? { x, y } : point,
+            index === activeHandle ? snapped : point,
         );
 
         if (!tryUpdatePoints(nextPoints)) {
@@ -743,6 +811,7 @@ async function addWarpedImageToDocument() {
 function resetTransform({ updateStatus = true } = {}) {
     points = getInitialPoints();
     fitFrameToFocusImageAspectRatio();
+    syncGridFrame();
     tiltState = getInitialTiltState();
     if (activeMode === "tilt") {
         tiltState = createTiltStateFromPoints(points);
@@ -790,6 +859,7 @@ function initializePlanner() {
     window.addEventListener("pointercancel", stopDragging);
     viewport.addEventListener("wheel", handleWheel, { passive: false });
     opacityCtrl.addEventListener("input", updateUI);
+    gridSnap.addEventListener("change", updateUI);
     refToggle.addEventListener("change", updateUI);
     resetBtn.addEventListener("click", resetTransform);
     downloadBtn.addEventListener("click", downloadWarpedImage);
