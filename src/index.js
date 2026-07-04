@@ -14,6 +14,9 @@ const refToggle = document.getElementById("refToggle");
 const gridSnap = document.getElementById("gridSnap");
 const gridOverlay = document.getElementById("grid-overlay");
 const resetBtn = document.getElementById("resetBtn");
+const refToggleRow = document.querySelector(".ref-toggle-row");
+const opacityField = document.querySelector(".opacity-field");
+const refUploadField = document.querySelector(".ref-upload-field");
 const clearBtn = document.getElementById("clearBtn");
 const addToDocumentBtn = document.getElementById("addToDocumentBtn");
 const modeTabs = Array.from(document.querySelectorAll(".mode-tab"));
@@ -420,6 +423,31 @@ function fitFrameToFocusImageAspectRatio() {
     }
 }
 
+function syncControlsAlignment() {
+    if (!refToggleRow || !resetBtn) {
+        return;
+    }
+
+    const toggleWidth = refToggleRow.offsetWidth;
+    const resetWidth = resetBtn.offsetWidth;
+
+    if (opacityField) {
+        opacityField.style.width = `${toggleWidth}px`;
+    }
+
+    if (refUploadField) {
+        refUploadField.style.width = `${resetWidth}px`;
+    }
+}
+
+function updateOpacityRangeFill() {
+    const min = Number(opacityCtrl.min) || 0;
+    const max = Number(opacityCtrl.max) || 1;
+    const value = Number(opacityCtrl.value);
+    const percent = ((value - min) / (max - min)) * 100;
+    opacityCtrl.style.setProperty("--range-progress", `${percent}%`);
+}
+
 function updateUI() {
     const { width, height } = getViewportSize();
     document.body.dataset.mode = activeMode;
@@ -512,6 +540,8 @@ function updateUI() {
     updateGridOverlay();
 
     updateClearButton();
+    updateOpacityRangeFill();
+    syncControlsAlignment();
     applyViewTransform();
 }
 
@@ -536,7 +566,7 @@ function resetUploadField(inputId) {
     uploadButton?.classList.remove("is-uploaded");
     const buttonText = uploadButton?.querySelector(".upload-button-text");
     if (buttonText) {
-        buttonText.textContent = "Choose Image";
+        buttonText.textContent = "Upload";
     }
 }
 

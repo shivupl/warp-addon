@@ -176,7 +176,7 @@
             }
 
             .toggle-switch input:checked + .toggle-track {
-                background: #2563eb;
+                background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
             }
 
             .toggle-switch input:checked + .toggle-track::after {
@@ -184,7 +184,7 @@
             }
 
             .toggle-switch input:focus-visible + .toggle-track {
-                outline: 2px solid rgba(37, 99, 235, 0.35);
+                outline: 2px solid rgba(82, 88, 228, 0.35);
                 outline-offset: 2px;
             }
 
@@ -527,25 +527,38 @@
             }
 
             .opacity-collapse.is-open + .control-row {
-                padding-top: 8px;
+                margin-top: 12px;
+                padding-top: 12px;
                 border-top: 1px solid #f1f5f9;
                 transition:
+                    margin-top 0.28s cubic-bezier(0.4, 0, 0.2, 1),
                     padding-top 0.28s cubic-bezier(0.4, 0, 0.2, 1),
                     border-color 0.28s ease;
             }
 
             .control-row.opacity-row {
-                display: grid;
-                grid-template-columns: auto minmax(0, 1fr) auto;
-                align-items: center;
-                gap: 10px;
-                flex-wrap: nowrap;
-                justify-content: initial;
                 opacity: 0;
-                transform: translateY(-6px);
+                transform: translateY(-4px);
                 transition:
                     opacity 0.22s ease,
                     transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .controls-pair-layout {
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+            }
+
+            .controls-pair-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 24px;
+            }
+
+            .control-row-tools.controls-pair-row {
+                align-items: center;
             }
 
             .opacity-collapse.is-open .opacity-row {
@@ -553,20 +566,99 @@
                 transform: translateY(0);
             }
 
-            .opacity-row .label {
+            .opacity-field,
+            .ref-upload-field {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                flex: 0 0 auto;
+                min-width: 0;
+            }
+
+            .ref-upload-field {
+                align-items: center;
+            }
+
+            .opacity-row .label,
+            .ref-upload-field .label {
+                margin: 0;
+                min-height: 14px;
                 white-space: nowrap;
+                line-height: 1.2;
+            }
+
+            .ref-upload-field .label {
+                text-align: center;
+            }
+
+            .control-input-shell {
+                display: flex;
+                align-items: center;
+                min-height: 28px;
+                width: 100%;
             }
 
             .opacity-row .range {
+                --range-progress: 72%;
+                -webkit-appearance: none;
+                appearance: none;
                 width: 100%;
                 min-width: 0;
-                accent-color: #2563eb;
+                height: 6px;
+                margin: 0;
+                border-radius: 999px;
+                background-color: #e5e7eb;
+                background-image: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+                background-size: var(--range-progress) 100%;
+                background-repeat: no-repeat;
+                cursor: pointer;
+            }
+
+            .opacity-row .range::-webkit-slider-runnable-track {
+                height: 6px;
+                border-radius: 999px;
+                background: transparent;
+            }
+
+            .opacity-row .range::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 14px;
+                height: 14px;
+                margin-top: -4px;
+                border: 2px solid #ffffff;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+                box-shadow: 0 1px 4px rgba(82, 88, 228, 0.35);
+                cursor: pointer;
+            }
+
+            .opacity-row .range::-moz-range-track {
+                height: 6px;
+                border: 0;
+                border-radius: 999px;
+                background: #e5e7eb;
+            }
+
+            .opacity-row .range::-moz-range-progress {
+                height: 6px;
+                border-radius: 999px;
+                background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            }
+
+            .opacity-row .range::-moz-range-thumb {
+                width: 14px;
+                height: 14px;
+                border: 2px solid #ffffff;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+                box-shadow: 0 1px 4px rgba(82, 88, 228, 0.35);
+                cursor: pointer;
             }
 
             .opacity-row .upload-button {
-                width: auto;
+                width: 100%;
                 min-height: 28px;
-                padding: 4px 12px;
+                padding: 6px 14px;
                 font-size: 11px;
                 white-space: nowrap;
             }
@@ -607,7 +699,7 @@
                 display: inline-flex;
                 align-items: center;
                 gap: 8px;
-                margin-right: auto;
+                flex: 0 0 auto;
             }
 
             .ref-toggle-row .label {
@@ -656,19 +748,46 @@
                     color 0.15s ease;
             }
 
-            .button:hover:not(:disabled) {
+            .button:hover:not(:disabled):not(.button-primary) {
                 background: #f9fafb;
             }
 
             .button-primary {
-                border-color: #111827;
-                background: #111827;
+                border-color: transparent;
+                background-color: transparent;
+                background-image: linear-gradient(
+                    135deg,
+                    #2563eb 0%,
+                    #7c3aed 50%,
+                    #2563eb 100%
+                );
+                background-size: 200% 200%;
+                background-position: 0% 50%;
                 color: #ffffff;
+                transition:
+                    background-position 0.6s ease,
+                    border-color 0.15s ease,
+                    color 0.15s ease;
             }
 
             .button-primary:hover:not(:disabled) {
-                border-color: #1f2937;
-                background: #1f2937;
+                border-color: transparent;
+                background-color: transparent;
+                background-image: linear-gradient(
+                    135deg,
+                    #2563eb 0%,
+                    #7c3aed 50%,
+                    #2563eb 100%
+                );
+                background-size: 200% 200%;
+                background-position: 100% 50%;
+                color: #ffffff;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .button-primary {
+                    transition: none;
+                }
             }
 
             .button:disabled {
@@ -810,32 +929,41 @@
             </section>
 
             <section class="controls" aria-label="Warp controls">
-                <div class="opacity-collapse" id="opacityCollapse" aria-hidden="true">
-                    <div class="opacity-collapse-inner">
-                        <div class="control-row opacity-row">
-                            <label class="label" for="opacityCtrl">Focus Opacity</label>
-                            <input class="range" type="range" id="opacityCtrl" min="0" max="1" step="0.01" value="0.72" />
-                            <label class="upload-button" for="refUpload">
-                                <span class="upload-button-text">Choose Image</span>
-                            </label>
-                            <input class="file-input" type="file" id="refUpload" accept="image/*" />
+                <div class="controls-pair-layout">
+                    <div class="opacity-collapse" id="opacityCollapse" aria-hidden="true">
+                        <div class="opacity-collapse-inner">
+                            <div class="controls-pair-row opacity-row">
+                                <div class="opacity-field">
+                                    <label class="label" for="opacityCtrl">Focus Opacity</label>
+                                    <div class="control-input-shell">
+                                        <input class="range" type="range" id="opacityCtrl" min="0" max="1" step="0.01" value="0.72" />
+                                    </div>
+                                </div>
+                                <div class="ref-upload-field">
+                                    <span class="label">Reference Image:</span>
+                                    <label class="upload-button" for="refUpload">
+                                        <span class="upload-button-text">Upload</span>
+                                    </label>
+                                    <input class="file-input" type="file" id="refUpload" accept="image/*" />
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="control-row control-row-tools">
-                    <div class="ref-toggle-row">
-                        <label class="label" for="refToggle">Background Ref</label>
-                        <label class="toggle-switch" for="refToggle" title="Show background reference">
-                            <input type="checkbox" id="refToggle" />
-                            <span class="toggle-track" aria-hidden="true"></span>
-                        </label>
+                    <div class="control-row control-row-tools controls-pair-row">
+                        <div class="ref-toggle-row">
+                            <label class="label" for="refToggle">Background Ref</label>
+                            <label class="toggle-switch" for="refToggle" title="Show background reference">
+                                <input type="checkbox" id="refToggle" />
+                                <span class="toggle-track" aria-hidden="true"></span>
+                            </label>
+                        </div>
+                        <button id="resetBtn" class="button button-reset" type="button">Reset Position</button>
                     </div>
-                    <button id="resetBtn" class="button button-reset" type="button">Reset Position</button>
                 </div>
 
                 <div class="button-row">
-                    <button id="addToDocumentBtn" class="button button-primary" type="button" disabled>Add to Page</button>
+                    <button id="addToDocumentBtn" class="button button-primary" type="button" disabled>Add to Canvas</button>
                 </div>
 
                 <details class="advanced-controls warp-only">
