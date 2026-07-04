@@ -11,9 +11,9 @@ const refToggle = document.getElementById("refToggle");
 const gridSnap = document.getElementById("gridSnap");
 const gridOverlay = document.getElementById("grid-overlay");
 const resetBtn = document.getElementById("resetBtn");
+const clearBtn = document.getElementById("clearBtn");
 const downloadBtn = document.getElementById("downloadBtn");
 const addToDocumentBtn = document.getElementById("addToDocumentBtn");
-const statusText = document.getElementById("status");
 const modeTabs = Array.from(document.querySelectorAll(".mode-tab"));
 const handles = Array.from({ length: 4 }, (_, index) => document.getElementById(`h${index}`));
 const edgeHandles = Array.from(document.querySelectorAll(".edge-handle"));
@@ -78,9 +78,7 @@ let activeMode = "warp";
 let tiltState = null;
 let gridFrame = null;
 
-function setStatus(message) {
-    statusText.textContent = message;
-}
+function setStatus(_message) {}
 
 function getViewportSize() {
     const size = viewport.clientWidth || 450;
@@ -499,6 +497,31 @@ function updateAddToPageButton() {
     addToDocumentBtn.disabled = !addOnReady || !hasFocusUpload;
 }
 
+function resetUploadField(inputId) {
+    const input = document.getElementById(inputId);
+    const uploadButton = document.querySelector(`label[for="${inputId}"].upload-button`);
+
+    if (input) {
+        input.value = "";
+    }
+
+    uploadButton?.classList.remove("is-uploaded");
+    const buttonText = uploadButton?.querySelector(".upload-button-text");
+    if (buttonText) {
+        buttonText.textContent = "Choose Image";
+    }
+}
+
+function clearAllImages() {
+    hasFocusUpload = false;
+    focusImg.src = FOCUS_PLACEHOLDER;
+    refImg.src = REF_PLACEHOLDER;
+    resetUploadField("focusUpload");
+    resetUploadField("refUpload");
+    updateAddToPageButton();
+    resetTransform({ updateStatus: false });
+}
+
 function setupUploader(inputId, targetImg) {
     const input = document.getElementById(inputId);
     const uploadButton = document.querySelector(`label[for="${inputId}"].upload-button`);
@@ -878,6 +901,7 @@ function initializePlanner() {
     gridSnap.addEventListener("change", updateUI);
     refToggle.addEventListener("change", updateUI);
     resetBtn.addEventListener("click", resetTransform);
+    clearBtn.addEventListener("click", clearAllImages);
     downloadBtn.addEventListener("click", downloadWarpedImage);
     addToDocumentBtn.addEventListener("click", addWarpedImageToDocument);
     modeTabs.forEach((tab) => {

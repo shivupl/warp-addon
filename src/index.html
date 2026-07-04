@@ -42,6 +42,33 @@
                 padding: 16px 14px;
             }
 
+            .clear-btn {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                z-index: 110;
+                min-height: 24px;
+                padding: 4px 10px;
+                border: 1px solid rgba(255, 255, 255, 0.35);
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.35);
+                color: rgba(51, 65, 85, 0.85);
+                font-size: 11px;
+                font-weight: 600;
+                cursor: pointer;
+                pointer-events: auto;
+                transition: background 0.15s ease, border-color 0.15s ease;
+            }
+
+            .clear-btn:hover {
+                background: rgba(255, 255, 255, 0.72);
+                border-color: rgba(255, 255, 255, 0.6);
+            }
+
+            .clear-btn:active {
+                background: rgba(255, 255, 255, 0.55);
+            }
+
             .upload-grid {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -527,20 +554,10 @@
                 border-color: #5258e4;
                 outline: 2px solid rgba(82, 88, 228, 0.18);
             }
-
-            .status {
-                min-height: 16px;
-                margin: 0;
-                color: #64748b;
-                font-size: 11px;
-                line-height: 1.35;
-                text-align: center;
-            }
         </style>
     </head>
     <body>
         <main class="app">
-
             <section class="upload-grid" aria-label="Image uploads">
                 <div class="field">
                     <div class="field-label-row">
@@ -567,6 +584,7 @@
             </section>
 
             <section class="view-window" id="viewport" aria-label="Warp preview">
+                <button id="clearBtn" class="clear-btn" type="button">Clear</button>
                 <div id="viewPan">
                     <div id="viewZoom">
                         <img class="ref-image" id="refImg" alt="Reference" draggable="false" />
@@ -640,7 +658,6 @@
                         </label>
                     </div>
                 </details>
-                <p id="status" class="status">Initializing add-on...</p>
             </section>
         </main>
 
