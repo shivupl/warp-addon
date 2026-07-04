@@ -60,6 +60,10 @@
                 transition: background 0.15s ease, border-color 0.15s ease;
             }
 
+            .clear-btn[hidden] {
+                display: none !important;
+            }
+
             .clear-btn:hover {
                 background: rgba(255, 255, 255, 0.72);
                 border-color: rgba(255, 255, 255, 0.6);
@@ -675,7 +679,7 @@
 
             <section class="view-window" id="viewport" aria-label="Warp preview">
                 <input class="file-input" type="file" id="focusUpload" accept="image/*" />
-                <button id="clearBtn" class="clear-btn" type="button">Clear</button>
+                <button id="clearBtn" class="clear-btn" type="button" hidden>Clear</button>
                 <div id="viewPan">
                     <div id="viewZoom">
                         <img class="ref-image" id="refImg" alt="Reference" draggable="false" />

@@ -74,6 +74,7 @@ let isViewPan = false;
 let lastPanClient = { x: 0, y: 0 };
 let addOnReady = false;
 let hasFocusUpload = false;
+let hasRefUpload = false;
 let activeMode = "warp";
 let tiltState = null;
 let gridFrame = null;
@@ -510,7 +511,14 @@ function updateUI() {
     }
     updateGridOverlay();
 
+    updateClearButton();
     applyViewTransform();
+}
+
+function updateClearButton() {
+    if (clearBtn) {
+        clearBtn.hidden = !hasFocusUpload && !hasRefUpload;
+    }
 }
 
 function updateAddToPageButton() {
@@ -534,12 +542,14 @@ function resetUploadField(inputId) {
 
 function clearAllImages() {
     hasFocusUpload = false;
+    hasRefUpload = false;
     focusImg.src = FOCUS_PLACEHOLDER;
     refImg.src = REF_PLACEHOLDER;
     resetUploadField("focusUpload");
     resetUploadField("refUpload");
     updateAddToPageButton();
-    resetTransform({ updateStatus: false });
+    updateClearButton();
+    updateUI();
 }
 
 function setupUploader(inputId, targetImg) {
@@ -567,6 +577,8 @@ function setupUploader(inputId, targetImg) {
                         fitFrameToFocusImageAspectRatio();
                         syncGridFrame();
                         updateAddToPageButton();
+                    } else if (inputId === "refUpload") {
+                        hasRefUpload = true;
                     }
                     updateUI();
                     setStatus(inputId === "focusUpload" ? "Focus image loaded. Drag the corners to warp it." : "Reference image loaded.");
