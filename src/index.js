@@ -4,7 +4,9 @@ const viewport = document.getElementById("viewport");
 const viewPan = document.getElementById("viewPan");
 const viewZoom = document.getElementById("viewZoom");
 const focusContainer = document.getElementById("focus-container");
+const focusUploadPrompt = document.getElementById("focusUploadPrompt");
 const focusImg = document.getElementById("focusImg");
+const focusUpload = document.getElementById("focusUpload");
 const refImg = document.getElementById("refImg");
 const opacityCtrl = document.getElementById("opacityCtrl");
 const opacityRow = document.querySelector(".opacity-row");
@@ -50,14 +52,12 @@ const FOCUS_PLACEHOLDER =
     </linearGradient>
   </defs>
   <rect width="900" height="900" rx="56" fill="url(#focus)"/>
-  <circle cx="450" cy="360" r="130" fill="rgba(255,255,255,0.2)"/>
-  <path d="M235 590h430" stroke="#fff" stroke-width="36" stroke-linecap="round"/>
-  <path d="M305 665h290" stroke="#fff" stroke-width="24" stroke-linecap="round" opacity=".8"/>
-  <text x="450" y="385" text-anchor="middle" font-family="Arial, sans-serif" font-size="76" font-weight="800" fill="#fff">WARP</text>
 </svg>`);
 
 const EXPORT_SIZE = 1200;
 const GRID_DIVISIONS = 12;
+const INITIAL_FRAME_SCALE = 0.62;
+const INITIAL_VIEW_ZOOM = 1.1;
 const MESH_STEPS = 42;
 const MAX_TILT_DEGREES = 78;
 const TILT_DRAG_SENSITIVITY = 0.7;
@@ -69,7 +69,7 @@ let isDraggingWhole = false;
 let lastContentPos = { x: 0, y: 0 };
 let viewTx = 0;
 let viewTy = 0;
-let viewS = 1;
+let viewS = INITIAL_VIEW_ZOOM;
 let isViewPan = false;
 let lastPanClient = { x: 0, y: 0 };
 let addOnReady = false;
@@ -87,7 +87,7 @@ function getViewportSize() {
 
 function getInitialPoints() {
     const { width, height } = getViewportSize();
-    const size = Math.round(Math.min(width, height) * 0.56);
+    const size = Math.round(Math.min(width, height) * INITIAL_FRAME_SCALE);
     const left = Math.round((width - size) / 2);
     const top = Math.round((height - size) / 2);
     const right = left + size;
@@ -486,6 +486,20 @@ function updateUI() {
         setStatus(error.message);
     }
 
+    const showFocusPlaceholder = !hasFocusUpload;
+    focusContainer.classList.toggle("is-upload-target", showFocusPlaceholder);
+    if (focusUploadPrompt) {
+        focusUploadPrompt.hidden = !showFocusPlaceholder;
+    }
+
+    handles.forEach((handle) => {
+        handle.style.display = showFocusPlaceholder ? "none" : "";
+    });
+    edgeHandles.forEach((handle) => {
+        handle.style.display = showFocusPlaceholder ? "none" : "";
+    });
+    centerGrab.style.display = showFocusPlaceholder ? "none" : "";
+
     const showReference = refToggle.checked;
     focusContainer.style.opacity = showReference ? opacityCtrl.value : 1;
     refImg.style.display = showReference ? "block" : "none";
@@ -837,6 +851,13 @@ async function addWarpedImageToDocument() {
     }
 }
 
+function resetViewTransform() {
+    const { width, height } = getViewportSize();
+    viewS = INITIAL_VIEW_ZOOM;
+    viewTx = (width * (1 - viewS)) / 2;
+    viewTy = (height * (1 - viewS)) / 2;
+}
+
 function resetTransform({ updateStatus = true } = {}) {
     points = getInitialPoints();
     fitFrameToFocusImageAspectRatio();
@@ -846,9 +867,7 @@ function resetTransform({ updateStatus = true } = {}) {
         tiltState = createTiltStateFromPoints(points);
         updateTiltPoints();
     }
-    viewTx = 0;
-    viewTy = 0;
-    viewS = 1;
+    resetViewTransform();
     updateUI();
     if (updateStatus) {
         setStatus(addOnReady ? "Transformation reset." : "Waiting for Adobe Express...");
@@ -882,6 +901,11 @@ function initializePlanner() {
     setupUploader("refUpload", refImg);
     setupUploader("focusUpload", focusImg);
 
+    focusUploadPrompt?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        focusUpload?.click();
+    });
+
     viewport.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", stopDragging);
@@ -902,6 +926,7 @@ function initializePlanner() {
     });
     window.addEventListener("resize", updateUI);
 
+    resetViewTransform();
     updateUI();
     requestAnimationFrame(() => {
         requestAnimationFrame(() => resetTransform({ updateStatus: false }));

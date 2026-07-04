@@ -71,8 +71,10 @@
 
             .upload-grid {
                 display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-columns: 1fr;
                 gap: 12px;
+                max-width: 480px;
+                margin: 0 auto;
             }
 
             .field {
@@ -270,6 +272,76 @@
                 pointer-events: none;
             }
 
+            #focus-container.is-upload-target {
+                pointer-events: auto;
+            }
+
+            .focus-upload-prompt {
+                position: absolute;
+                inset: 0;
+                z-index: 2;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 16px;
+                pointer-events: auto;
+                cursor: pointer;
+            }
+
+            .focus-upload-prompt[hidden] {
+                display: none !important;
+            }
+
+            .focus-upload-icon {
+                width: 52px;
+                height: 52px;
+                color: rgba(255, 255, 255, 0.88);
+                transition:
+                    color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .focus-upload-btn {
+                min-height: 36px;
+                padding: 8px 20px;
+                border: 1px solid rgba(255, 255, 255, 0.35);
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.35);
+                color: rgba(255, 255, 255, 0.94);
+                font-size: 14px;
+                font-weight: 600;
+                font-family: inherit;
+                line-height: 1.2;
+                pointer-events: none;
+                transition:
+                    background 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .focus-upload-prompt:hover .focus-upload-icon {
+                color: rgba(255, 255, 255, 1);
+                transform: translateY(-2px);
+            }
+
+            .focus-upload-prompt:hover .focus-upload-btn {
+                background: rgba(255, 255, 255, 0.72);
+                border-color: rgba(255, 255, 255, 0.6);
+                transform: translateY(-1px);
+            }
+
+            .focus-upload-prompt:active .focus-upload-icon {
+                transform: translateY(0);
+            }
+
+            .focus-upload-prompt:active .focus-upload-btn {
+                background: rgba(255, 255, 255, 0.55);
+                transform: translateY(0);
+            }
+
             #focusImg {
                 display: block;
                 width: 100%;
@@ -360,6 +432,9 @@
                 display: grid;
                 grid-template-columns: 1fr 1fr 1fr;
                 gap: 4px;
+                width: 100%;
+                max-width: 480px;
+                margin: 0 auto;
                 padding: 4px;
                 border: 1px solid #eeeeee;
                 border-radius: 14px;
@@ -579,15 +654,6 @@
             <section class="upload-grid" aria-label="Image uploads">
                 <div class="field">
                     <div class="field-label-row">
-                        <label class="label" for="focusUpload">Focus Image</label>
-                    </div>
-                    <label class="upload-button" for="focusUpload">
-                        <span class="upload-button-text">Choose Image</span>
-                    </label>
-                    <input class="file-input" type="file" id="focusUpload" accept="image/*" />
-                </div>
-                <div class="field">
-                    <div class="field-label-row">
                         <label class="label" for="refUpload">Background Ref</label>
                         <label class="toggle-switch" for="refToggle" title="Show background reference">
                             <input type="checkbox" id="refToggle" />
@@ -601,7 +667,14 @@
                 </div>
             </section>
 
+            <div class="mode-tabs" role="tablist" aria-label="Transform mode">
+                <button class="mode-tab is-active" type="button" data-mode="warp" role="tab" aria-selected="true">Perspective</button>
+                <button class="mode-tab" type="button" data-mode="tilt" role="tab" aria-selected="false">Free Tilt</button>
+                <button class="mode-tab" type="button" data-mode="sides" role="tab" aria-selected="false">Warp (Sides)</button>
+            </div>
+
             <section class="view-window" id="viewport" aria-label="Warp preview">
+                <input class="file-input" type="file" id="focusUpload" accept="image/*" />
                 <button id="clearBtn" class="clear-btn" type="button">Clear</button>
                 <div id="viewPan">
                     <div id="viewZoom">
@@ -611,6 +684,14 @@
 
                         <div id="focus-container">
                             <img id="focusImg" alt="Focus" draggable="false" />
+                            <div id="focusUploadPrompt" class="focus-upload-prompt" hidden>
+                                <svg class="focus-upload-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 16V8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M8 12l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M5 18h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                                <span class="focus-upload-btn">Upload Image</span>
+                            </div>
                         </div>
 
                         <div id="h0" class="handle" data-index="0" title="Top left"></div>
@@ -627,12 +708,6 @@
             </section>
 
             <section class="controls" aria-label="Warp controls">
-                <div class="mode-tabs" role="tablist" aria-label="Transform mode">
-                    <button class="mode-tab is-active" type="button" data-mode="warp" role="tab" aria-selected="true">Perspective</button>
-                    <button class="mode-tab" type="button" data-mode="tilt" role="tab" aria-selected="false">Free Tilt</button>
-                    <button class="mode-tab" type="button" data-mode="sides" role="tab" aria-selected="false">Warp (Sides)</button>
-                </div>
-
                 <div class="control-row opacity-row">
                     <label class="label" for="opacityCtrl">Focus Opacity</label>
                     <input class="range" type="range" id="opacityCtrl" min="0" max="1" step="0.01" value="0.72" />
