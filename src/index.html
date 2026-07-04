@@ -73,6 +73,40 @@
                 background: rgba(255, 255, 255, 0.55);
             }
 
+            .frame-grid-snap {
+                position: absolute;
+                top: 8px;
+                left: 8px;
+                z-index: 110;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                min-height: 24px;
+                padding: 4px 10px;
+                border: 1px solid rgba(255, 255, 255, 0.35);
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.35);
+                color: rgba(51, 65, 85, 0.85);
+                font-size: 11px;
+                font-weight: 600;
+                cursor: pointer;
+                pointer-events: auto;
+                transition: background 0.15s ease, border-color 0.15s ease;
+            }
+
+            .frame-grid-snap:hover {
+                background: rgba(255, 255, 255, 0.72);
+                border-color: rgba(255, 255, 255, 0.6);
+            }
+
+            .frame-grid-snap input {
+                width: 12px;
+                height: 12px;
+                margin: 0;
+                accent-color: #475569;
+                cursor: pointer;
+            }
+
             .upload-grid {
                 display: grid;
                 grid-template-columns: 1fr;
@@ -472,7 +506,7 @@
                 flex-wrap: wrap;
             }
 
-            .control-row + .control-row {
+            .control-row:not([hidden]) + .control-row {
                 padding-top: 8px;
                 border-top: 1px solid #f1f5f9;
             }
@@ -503,10 +537,6 @@
 
             .control-row-tools {
                 justify-content: flex-end;
-            }
-
-            .control-row-tools .warp-only {
-                margin-right: auto;
             }
 
             .button-reset {
@@ -679,6 +709,10 @@
 
             <section class="view-window" id="viewport" aria-label="Warp preview">
                 <input class="file-input" type="file" id="focusUpload" accept="image/*" />
+                <label class="frame-grid-snap warp-only" for="gridSnap">
+                    <input type="checkbox" id="gridSnap" />
+                    Grid Snap
+                </label>
                 <button id="clearBtn" class="clear-btn" type="button" hidden>Clear</button>
                 <div id="viewPan">
                     <div id="viewZoom">
@@ -718,10 +752,6 @@
                 </div>
 
                 <div class="control-row control-row-tools">
-                    <label class="checkbox-label warp-only" for="gridSnap">
-                        <input type="checkbox" id="gridSnap" />
-                        Grid Snap
-                    </label>
                     <button id="resetBtn" class="button button-reset" type="button">Reset Position</button>
                 </div>
 
