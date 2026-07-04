@@ -398,6 +398,10 @@
                 border-top: 1px solid #f1f5f9;
             }
 
+            .opacity-row[hidden] {
+                display: none !important;
+            }
+
             .range {
                 width: min(180px, 52%);
                 accent-color: #2563eb;
@@ -418,6 +422,21 @@
                 display: block;
             }
 
+            .control-row-tools {
+                justify-content: flex-end;
+            }
+
+            .control-row-tools .warp-only {
+                margin-right: auto;
+            }
+
+            .button-reset {
+                min-height: 28px;
+                padding: 4px 12px;
+                font-size: 11px;
+                white-space: nowrap;
+            }
+
             .checkbox-label {
                 display: inline-flex;
                 align-items: center;
@@ -429,8 +448,7 @@
 
             .button-row {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
+                grid-template-columns: 1fr;
             }
 
             .button {
@@ -572,7 +590,7 @@
                     <div class="field-label-row">
                         <label class="label" for="refUpload">Background Ref</label>
                         <label class="toggle-switch" for="refToggle" title="Show background reference">
-                            <input type="checkbox" id="refToggle" checked />
+                            <input type="checkbox" id="refToggle" />
                             <span class="toggle-track" aria-hidden="true"></span>
                         </label>
                     </div>
@@ -615,21 +633,20 @@
                     <button class="mode-tab" type="button" data-mode="sides" role="tab" aria-selected="false">Warp (Sides)</button>
                 </div>
 
-                <div class="control-row">
+                <div class="control-row opacity-row">
                     <label class="label" for="opacityCtrl">Focus Opacity</label>
                     <input class="range" type="range" id="opacityCtrl" min="0" max="1" step="0.01" value="0.72" />
                 </div>
 
-                <div class="control-row">
+                <div class="control-row control-row-tools">
                     <label class="checkbox-label warp-only" for="gridSnap">
                         <input type="checkbox" id="gridSnap" />
                         Grid Snap
                     </label>
-                    <button id="resetBtn" class="button" type="button">Reset</button>
+                    <button id="resetBtn" class="button button-reset" type="button">Reset Position</button>
                 </div>
 
                 <div class="button-row">
-                    <button id="downloadBtn" class="button" type="button">Download PNG</button>
                     <button id="addToDocumentBtn" class="button button-primary" type="button" disabled>Add to Page</button>
                 </div>
 

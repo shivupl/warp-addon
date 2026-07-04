@@ -7,12 +7,12 @@ const focusContainer = document.getElementById("focus-container");
 const focusImg = document.getElementById("focusImg");
 const refImg = document.getElementById("refImg");
 const opacityCtrl = document.getElementById("opacityCtrl");
+const opacityRow = document.querySelector(".opacity-row");
 const refToggle = document.getElementById("refToggle");
 const gridSnap = document.getElementById("gridSnap");
 const gridOverlay = document.getElementById("grid-overlay");
 const resetBtn = document.getElementById("resetBtn");
 const clearBtn = document.getElementById("clearBtn");
-const downloadBtn = document.getElementById("downloadBtn");
 const addToDocumentBtn = document.getElementById("addToDocumentBtn");
 const modeTabs = Array.from(document.querySelectorAll(".mode-tab"));
 const handles = Array.from({ length: 4 }, (_, index) => document.getElementById(`h${index}`));
@@ -486,8 +486,14 @@ function updateUI() {
         setStatus(error.message);
     }
 
-    focusContainer.style.opacity = opacityCtrl.value;
-    refImg.style.display = refToggle.checked ? "block" : "none";
+    const showReference = refToggle.checked;
+    focusContainer.style.opacity = showReference ? opacityCtrl.value : 1;
+    refImg.style.display = showReference ? "block" : "none";
+
+    if (opacityRow) {
+        opacityRow.hidden = !showReference;
+        opacityRow.style.display = showReference ? "" : "none";
+    }
     updateGridOverlay();
 
     applyViewTransform();
@@ -813,22 +819,6 @@ function createOutputBlob(options) {
     return createWarpedBlob(options);
 }
 
-async function downloadWarpedImage() {
-    try {
-        setStatus("Rendering PNG...");
-        const blob = await createOutputBlob({ opacity: 1 });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = activeMode === "tilt" ? "free-tilt.png" : "perspective-warp.png";
-        link.click();
-        URL.revokeObjectURL(url);
-        setStatus("PNG rendered.");
-    } catch (error) {
-        setStatus(error.message);
-    }
-}
-
 async function addWarpedImageToDocument() {
     if (!addOnReady || !hasFocusUpload) {
         return;
@@ -902,7 +892,6 @@ function initializePlanner() {
     refToggle.addEventListener("change", updateUI);
     resetBtn.addEventListener("click", resetTransform);
     clearBtn.addEventListener("click", clearAllImages);
-    downloadBtn.addEventListener("click", downloadWarpedImage);
     addToDocumentBtn.addEventListener("click", addWarpedImageToDocument);
     modeTabs.forEach((tab) => {
         tab.addEventListener("click", () => setMode(tab.dataset.mode));
