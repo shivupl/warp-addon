@@ -55,6 +55,81 @@
                 gap: 6px;
             }
 
+            .field-label-row {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                min-height: 18px;
+            }
+
+            .field-label-row .label {
+                margin: 0;
+                white-space: nowrap;
+            }
+
+            .toggle-switch {
+                position: relative;
+                display: inline-flex;
+                flex-shrink: 0;
+                align-items: center;
+                cursor: pointer;
+            }
+
+            .toggle-switch input {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+            }
+
+            .toggle-track {
+                position: relative;
+                display: block;
+                width: 32px;
+                height: 18px;
+                border-radius: 999px;
+                background: #d1d5db;
+                transition: background 0.15s ease;
+            }
+
+            .toggle-track::after {
+                content: "";
+                position: absolute;
+                top: 2px;
+                left: 2px;
+                width: 14px;
+                height: 14px;
+                border-radius: 999px;
+                background: #ffffff;
+                box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+                transition: transform 0.15s ease;
+            }
+
+            .toggle-switch input:checked + .toggle-track {
+                background: #2563eb;
+            }
+
+            .toggle-switch input:checked + .toggle-track::after {
+                transform: translateX(14px);
+            }
+
+            .toggle-switch input:focus-visible + .toggle-track {
+                outline: 2px solid rgba(37, 99, 235, 0.35);
+                outline-offset: 2px;
+            }
+
+            .toggle-switch input:disabled + .toggle-track {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+
+            .upload-grid .label {
+                padding-left: 0;
+            }
+
             .label {
                 color: #6b7280;
                 font-size: 11px;
@@ -231,14 +306,9 @@
                 border-radius: 999px;
                 background: #2563eb;
                 transform: translate(-50%, -50%);
+                transform-origin: center center;
                 touch-action: none;
                 cursor: grab;
-            }
-
-            .edge-handle[data-edge="left"],
-            .edge-handle[data-edge="right"] {
-                width: 10px;
-                height: 28px;
             }
 
             .edge-handle:hover {
@@ -473,14 +543,22 @@
 
             <section class="upload-grid" aria-label="Image uploads">
                 <div class="field">
-                    <label class="label" for="focusUpload">Focus Image</label>
+                    <div class="field-label-row">
+                        <label class="label" for="focusUpload">Focus Image</label>
+                    </div>
                     <label class="upload-button" for="focusUpload">
                         <span class="upload-button-text">Choose Image</span>
                     </label>
                     <input class="file-input" type="file" id="focusUpload" accept="image/*" />
                 </div>
                 <div class="field">
-                    <label class="label" for="refUpload">Background Ref</label>
+                    <div class="field-label-row">
+                        <label class="label" for="refUpload">Background Ref</label>
+                        <label class="toggle-switch" for="refToggle" title="Show background reference">
+                            <input type="checkbox" id="refToggle" checked />
+                            <span class="toggle-track" aria-hidden="true"></span>
+                        </label>
+                    </div>
                     <label class="upload-button" for="refUpload">
                         <span class="upload-button-text">Choose Image</span>
                     </label>
@@ -525,10 +603,6 @@
                 </div>
 
                 <div class="control-row">
-                    <label class="checkbox-label" for="refToggle">
-                        <input type="checkbox" id="refToggle" checked />
-                        Reference
-                    </label>
                     <label class="checkbox-label warp-only" for="gridSnap">
                         <input type="checkbox" id="gridSnap" />
                         Grid Snap

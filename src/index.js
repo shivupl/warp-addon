@@ -73,6 +73,7 @@ let viewS = 1;
 let isViewPan = false;
 let lastPanClient = { x: 0, y: 0 };
 let addOnReady = false;
+let hasFocusUpload = false;
 let activeMode = "warp";
 let tiltState = null;
 let gridFrame = null;
@@ -124,6 +125,10 @@ function quadCenter() {
     const cx = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
     const cy = (points[0].y + points[1].y + points[2].y + points[3].y) / 4;
     return { x: cx, y: cy };
+}
+
+function edgeAngle(from, to) {
+    return (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
 }
 
 function syncGridFrame() {
@@ -429,18 +434,22 @@ function updateUI() {
         top: {
             x: (points[0].x + points[1].x) / 2,
             y: (points[0].y + points[1].y) / 2,
+            angle: edgeAngle(points[0], points[1]),
         },
         right: {
             x: (points[1].x + points[2].x) / 2,
             y: (points[1].y + points[2].y) / 2,
+            angle: edgeAngle(points[1], points[2]),
         },
         bottom: {
             x: (points[2].x + points[3].x) / 2,
             y: (points[2].y + points[3].y) / 2,
+            angle: edgeAngle(points[2], points[3]),
         },
         left: {
             x: (points[3].x + points[0].x) / 2,
             y: (points[3].y + points[0].y) / 2,
+            angle: edgeAngle(points[3], points[0]),
         },
     };
 
@@ -448,6 +457,7 @@ function updateUI() {
         const position = edgePositions[handle.dataset.edge];
         handle.style.left = `${position.x}px`;
         handle.style.top = `${position.y}px`;
+        handle.style.transform = `translate(-50%, -50%) rotate(${position.angle}deg)`;
     });
 
     coordinateInputs.forEach((input) => {
@@ -485,6 +495,10 @@ function updateUI() {
     applyViewTransform();
 }
 
+function updateAddToPageButton() {
+    addToDocumentBtn.disabled = !addOnReady || !hasFocusUpload;
+}
+
 function setupUploader(inputId, targetImg) {
     const input = document.getElementById(inputId);
     const uploadButton = document.querySelector(`label[for="${inputId}"].upload-button`);
@@ -506,8 +520,10 @@ function setupUploader(inputId, targetImg) {
                 "load",
                 () => {
                     if (inputId === "focusUpload") {
+                        hasFocusUpload = true;
                         fitFrameToFocusImageAspectRatio();
                         syncGridFrame();
+                        updateAddToPageButton();
                     }
                     updateUI();
                     setStatus(inputId === "focusUpload" ? "Focus image loaded. Drag the corners to warp it." : "Reference image loaded.");
@@ -791,7 +807,7 @@ async function downloadWarpedImage() {
 }
 
 async function addWarpedImageToDocument() {
-    if (!addOnReady) {
+    if (!addOnReady || !hasFocusUpload) {
         return;
     }
 
@@ -804,7 +820,7 @@ async function addWarpedImageToDocument() {
     } catch (error) {
         setStatus(error.message || "Could not add the warped image to the page.");
     } finally {
-        addToDocumentBtn.disabled = !addOnReady;
+        updateAddToPageButton();
     }
 }
 
@@ -884,6 +900,6 @@ initializePlanner();
 addOnUISdk.ready.then(() => {
     console.log("addOnUISdk is ready for use.");
     addOnReady = true;
-    addToDocumentBtn.disabled = false;
+    updateAddToPageButton();
     setStatus("");
 });
