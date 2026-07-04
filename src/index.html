@@ -511,8 +511,72 @@
                 border-top: 1px solid #f1f5f9;
             }
 
-            .opacity-row[hidden] {
-                display: none !important;
+            .opacity-collapse {
+                display: grid;
+                grid-template-rows: 0fr;
+                transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .opacity-collapse.is-open {
+                grid-template-rows: 1fr;
+            }
+
+            .opacity-collapse-inner {
+                min-height: 0;
+                overflow: hidden;
+            }
+
+            .opacity-collapse.is-open + .control-row {
+                padding-top: 8px;
+                border-top: 1px solid #f1f5f9;
+                transition:
+                    padding-top 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    border-color 0.28s ease;
+            }
+
+            .control-row.opacity-row {
+                display: grid;
+                grid-template-columns: auto minmax(0, 1fr) auto;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: nowrap;
+                justify-content: initial;
+                opacity: 0;
+                transform: translateY(-6px);
+                transition:
+                    opacity 0.22s ease,
+                    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .opacity-collapse.is-open .opacity-row {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            .opacity-row .label {
+                white-space: nowrap;
+            }
+
+            .opacity-row .range {
+                width: 100%;
+                min-width: 0;
+                accent-color: #2563eb;
+            }
+
+            .opacity-row .upload-button {
+                width: auto;
+                min-height: 28px;
+                padding: 4px 12px;
+                font-size: 11px;
+                white-space: nowrap;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .opacity-collapse,
+                .control-row.opacity-row,
+                .opacity-collapse.is-open + .control-row {
+                    transition: none;
+                }
             }
 
             .range {
@@ -536,7 +600,23 @@
             }
 
             .control-row-tools {
-                justify-content: flex-end;
+                gap: 10px;
+            }
+
+            .ref-toggle-row {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                margin-right: auto;
+            }
+
+            .ref-toggle-row .label {
+                margin: 0;
+                white-space: nowrap;
+            }
+
+            .control-row-tools .button-reset {
+                flex-shrink: 0;
             }
 
             .button-reset {
@@ -685,22 +765,6 @@
     </head>
     <body>
         <main class="app">
-            <section class="upload-grid" aria-label="Image uploads">
-                <div class="field">
-                    <div class="field-label-row">
-                        <label class="label" for="refUpload">Background Ref</label>
-                        <label class="toggle-switch" for="refToggle" title="Show background reference">
-                            <input type="checkbox" id="refToggle" />
-                            <span class="toggle-track" aria-hidden="true"></span>
-                        </label>
-                    </div>
-                    <label class="upload-button" for="refUpload">
-                        <span class="upload-button-text">Choose Image</span>
-                    </label>
-                    <input class="file-input" type="file" id="refUpload" accept="image/*" />
-                </div>
-            </section>
-
             <div class="mode-tabs" role="tablist" aria-label="Transform mode">
                 <button class="mode-tab is-active" type="button" data-mode="warp" role="tab" aria-selected="true">Perspective</button>
                 <button class="mode-tab" type="button" data-mode="tilt" role="tab" aria-selected="false">Free Tilt</button>
@@ -746,12 +810,27 @@
             </section>
 
             <section class="controls" aria-label="Warp controls">
-                <div class="control-row opacity-row">
-                    <label class="label" for="opacityCtrl">Focus Opacity</label>
-                    <input class="range" type="range" id="opacityCtrl" min="0" max="1" step="0.01" value="0.72" />
+                <div class="opacity-collapse" id="opacityCollapse" aria-hidden="true">
+                    <div class="opacity-collapse-inner">
+                        <div class="control-row opacity-row">
+                            <label class="label" for="opacityCtrl">Focus Opacity</label>
+                            <input class="range" type="range" id="opacityCtrl" min="0" max="1" step="0.01" value="0.72" />
+                            <label class="upload-button" for="refUpload">
+                                <span class="upload-button-text">Choose Image</span>
+                            </label>
+                            <input class="file-input" type="file" id="refUpload" accept="image/*" />
+                        </div>
+                    </div>
                 </div>
 
                 <div class="control-row control-row-tools">
+                    <div class="ref-toggle-row">
+                        <label class="label" for="refToggle">Background Ref</label>
+                        <label class="toggle-switch" for="refToggle" title="Show background reference">
+                            <input type="checkbox" id="refToggle" />
+                            <span class="toggle-track" aria-hidden="true"></span>
+                        </label>
+                    </div>
                     <button id="resetBtn" class="button button-reset" type="button">Reset Position</button>
                 </div>
 

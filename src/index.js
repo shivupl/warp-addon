@@ -9,7 +9,7 @@ const focusImg = document.getElementById("focusImg");
 const focusUpload = document.getElementById("focusUpload");
 const refImg = document.getElementById("refImg");
 const opacityCtrl = document.getElementById("opacityCtrl");
-const opacityRow = document.querySelector(".opacity-row");
+const opacityCollapse = document.getElementById("opacityCollapse");
 const refToggle = document.getElementById("refToggle");
 const gridSnap = document.getElementById("gridSnap");
 const gridOverlay = document.getElementById("grid-overlay");
@@ -505,9 +505,9 @@ function updateUI() {
     focusContainer.style.opacity = showReference ? opacityCtrl.value : 1;
     refImg.style.display = showReference ? "block" : "none";
 
-    if (opacityRow) {
-        opacityRow.hidden = !showReference;
-        opacityRow.style.display = showReference ? "" : "none";
+    if (opacityCollapse) {
+        opacityCollapse.classList.toggle("is-open", showReference);
+        opacityCollapse.setAttribute("aria-hidden", String(!showReference));
     }
     updateGridOverlay();
 
