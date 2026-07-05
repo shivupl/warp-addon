@@ -24,6 +24,16 @@ const handles = Array.from({ length: 4 }, (_, index) => document.getElementById(
 const edgeHandles = Array.from(document.querySelectorAll(".edge-handle"));
 const centerGrab = document.getElementById("centerGrab");
 const coordinateInputs = Array.from(document.querySelectorAll(".coord-input"));
+const tiltGizmo = document.getElementById("tiltGizmo");
+const tiltGizmoRoot = document.getElementById("tiltGizmoRoot");
+const tiltPitchAxis = document.getElementById("tiltPitchAxis");
+const tiltYawAxis = document.getElementById("tiltYawAxis");
+const tiltPitchLabel = document.getElementById("tiltPitchLabel");
+const tiltYawLabel = document.getElementById("tiltYawLabel");
+const tiltPitchCtrl = document.getElementById("tiltPitchCtrl");
+const tiltYawCtrl = document.getElementById("tiltYawCtrl");
+const tiltPitchInput = document.getElementById("tiltPitchInput");
+const tiltYawInput = document.getElementById("tiltYawInput");
 
 const REF_PLACEHOLDER =
     "data:image/svg+xml;charset=utf-8," +
@@ -63,11 +73,12 @@ const INITIAL_FRAME_SCALE = 0.62;
 const INITIAL_VIEW_ZOOM = 1.1;
 const MESH_STEPS = 42;
 const MAX_TILT_DEGREES = 78;
-const TILT_DRAG_SENSITIVITY = 0.7;
+const TILT_DRAG_SENSITIVITY = 0.55;
 
 let points = [];
 let activeHandle = null;
 let activeEdge = null;
+let activeTiltAxis = null;
 let isDraggingWhole = false;
 let lastContentPos = { x: 0, y: 0 };
 let viewTx = 0;
@@ -363,6 +374,196 @@ function updateTiltPoints() {
     points = getTiltPoints();
 }
 
+function formatTiltAngle(degrees) {
+    return `${Math.round(degrees)}°`;
+}
+
+function setTiltRotation(rotateX, rotateY) {
+    tiltState = {
+        ...tiltState,
+        rotateX: clamp(rotateX, -MAX_TILT_DEGREES, MAX_TILT_DEGREES),
+        rotateY: clamp(rotateY, -MAX_TILT_DEGREES, MAX_TILT_DEGREES),
+    };
+    updateTiltPoints();
+}
+
+function updateTiltGizmo() {
+    if (!tiltGizmo || !tiltGizmoRoot || !tiltState) {
+        return;
+    }
+
+    const showGizmo = activeMode === "tilt" && hasFocusUpload;
+    tiltGizmo.hidden = !showGizmo;
+    tiltGizmo.setAttribute("aria-hidden", String(!showGizmo));
+
+    if (!showGizmo) {
+        return;
+    }
+
+    const { width, height } = getViewportSize();
+    tiltGizmo.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+    const cx = tiltState.centerX;
+    const cy = tiltState.centerY;
+    const topWidth = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+    const leftHeight = Math.hypot(points[3].x - points[0].x, points[3].y - points[0].y);
+    const arm = clamp(Math.min(topWidth, leftHeight) * 0.34, 36, 88);
+    const horizonSpan = arm * 1.55;
+
+    tiltGizmoRoot.setAttribute("transform", `translate(${cx} ${cy})`);
+
+    const horizonTop = document.getElementById("tiltHorizonTop");
+    const horizonBottom = document.getElementById("tiltHorizonBottom");
+    const pitchLine = document.getElementById("tiltPitchLine");
+    const pitchArrowTop = document.getElementById("tiltPitchArrowTop");
+    const pitchArrowBottom = document.getElementById("tiltPitchArrowBottom");
+    const pitchHit = document.getElementById("tiltPitchHit");
+    const yawArc = document.getElementById("tiltYawArc");
+    const yawArrowLeft = document.getElementById("tiltYawArrowLeft");
+    const yawArrowRight = document.getElementById("tiltYawArrowRight");
+    const yawHit = document.getElementById("tiltYawHit");
+
+    if (horizonTop) {
+        horizonTop.setAttribute("x1", String(-horizonSpan));
+        horizonTop.setAttribute("y1", String(-arm * 0.15));
+        horizonTop.setAttribute("x2", String(horizonSpan));
+        horizonTop.setAttribute("y2", String(-arm * 0.15));
+    }
+
+    if (horizonBottom) {
+        horizonBottom.setAttribute("x1", String(-horizonSpan));
+        horizonBottom.setAttribute("y1", String(arm * 0.15));
+        horizonBottom.setAttribute("x2", String(horizonSpan));
+        horizonBottom.setAttribute("y2", String(arm * 0.15));
+    }
+
+    const pitchHalf = arm * 0.72;
+    if (pitchLine) {
+        pitchLine.setAttribute("x1", "0");
+        pitchLine.setAttribute("y1", String(pitchHalf));
+        pitchLine.setAttribute("x2", "0");
+        pitchLine.setAttribute("y2", String(-pitchHalf));
+    }
+
+    if (pitchArrowTop) {
+        pitchArrowTop.setAttribute("points", `0,${-pitchHalf - 10} -7,${-pitchHalf + 2} 7,${-pitchHalf + 2}`);
+    }
+
+    if (pitchArrowBottom) {
+        pitchArrowBottom.setAttribute("points", `0,${pitchHalf + 10} -7,${pitchHalf - 2} 7,${pitchHalf - 2}`);
+    }
+
+    if (pitchHit) {
+        pitchHit.setAttribute("x", String(-16));
+        pitchHit.setAttribute("y", String(-pitchHalf - 14));
+        pitchHit.setAttribute("width", "32");
+        pitchHit.setAttribute("height", String(pitchHalf * 2 + 28));
+    }
+
+    const arcRadius = arm * 0.82;
+    const arcStartX = -arcRadius;
+    const arcEndX = arcRadius;
+    const arcY = -arm * 0.05;
+
+    if (yawArc) {
+        yawArc.setAttribute(
+            "d",
+            `M ${arcStartX} ${arcY} A ${arcRadius} ${arcRadius} 0 0 1 ${arcEndX} ${arcY}`,
+        );
+    }
+
+    if (yawArrowLeft) {
+        yawArrowLeft.setAttribute("points", `${arcStartX - 10},${arcY} ${arcStartX + 2},${arcY - 7} ${arcStartX + 2},${arcY + 7}`);
+    }
+
+    if (yawArrowRight) {
+        yawArrowRight.setAttribute("points", `${arcEndX + 10},${arcY} ${arcEndX - 2},${arcY - 7} ${arcEndX - 2},${arcY + 7}`);
+    }
+
+    if (yawHit) {
+        yawHit.setAttribute("x", String(arcStartX - 18));
+        yawHit.setAttribute("y", String(arcY - arcRadius - 10));
+        yawHit.setAttribute("width", String(arcRadius * 2 + 36));
+        yawHit.setAttribute("height", String(arcRadius + 24));
+    }
+
+    if (tiltPitchLabel) {
+        tiltPitchLabel.setAttribute("x", "0");
+        tiltPitchLabel.setAttribute("y", String(-pitchHalf - 22));
+        tiltPitchLabel.textContent = formatTiltAngle(tiltState.rotateX);
+    }
+
+    if (tiltYawLabel) {
+        tiltYawLabel.setAttribute("x", "0");
+        tiltYawLabel.setAttribute("y", String(arcY - arcRadius - 16));
+        tiltYawLabel.textContent = formatTiltAngle(tiltState.rotateY);
+    }
+
+    if (tiltPitchAxis) {
+        tiltPitchAxis.classList.toggle("is-active", activeTiltAxis === "pitch");
+    }
+
+    if (tiltYawAxis) {
+        tiltYawAxis.classList.toggle("is-active", activeTiltAxis === "yaw");
+    }
+}
+
+function syncTiltControls() {
+    if (!tiltState) {
+        return;
+    }
+
+    const pitch = Math.round(tiltState.rotateX);
+    const yaw = Math.round(tiltState.rotateY);
+
+    if (tiltPitchCtrl && document.activeElement !== tiltPitchCtrl) {
+        tiltPitchCtrl.value = String(pitch);
+    }
+
+    if (tiltYawCtrl && document.activeElement !== tiltYawCtrl) {
+        tiltYawCtrl.value = String(yaw);
+    }
+
+    if (tiltPitchInput && document.activeElement !== tiltPitchInput) {
+        tiltPitchInput.value = String(pitch);
+    }
+
+    if (tiltYawInput && document.activeElement !== tiltYawInput) {
+        tiltYawInput.value = String(yaw);
+    }
+}
+
+function applyTiltControlFromSliders() {
+    if (!tiltState) {
+        return;
+    }
+
+    setTiltRotation(Number(tiltPitchCtrl.value), Number(tiltYawCtrl.value));
+    updateUI();
+}
+
+function applyTiltControlFromInput(input) {
+    if (!tiltState) {
+        return;
+    }
+
+    const value = Number.parseFloat(input.value);
+    if (!Number.isFinite(value)) {
+        syncTiltControls();
+        return;
+    }
+
+    const clamped = clamp(value, -MAX_TILT_DEGREES, MAX_TILT_DEGREES);
+
+    if (input === tiltPitchInput) {
+        setTiltRotation(clamped, tiltState.rotateY);
+    } else if (input === tiltYawInput) {
+        setTiltRotation(tiltState.rotateX, clamped);
+    }
+
+    updateUI();
+}
+
 function fitFrameToFocusImageAspectRatio() {
     if (!focusImg.naturalWidth || !focusImg.naturalHeight) {
         return;
@@ -525,9 +726,12 @@ function updateUI() {
         handle.style.display = showFocusPlaceholder ? "none" : "";
     });
     edgeHandles.forEach((handle) => {
-        handle.style.display = showFocusPlaceholder ? "none" : "";
+        handle.style.display = showFocusPlaceholder || activeMode === "tilt" ? "none" : "";
     });
     centerGrab.style.display = showFocusPlaceholder ? "none" : "";
+
+    updateTiltGizmo();
+    syncTiltControls();
 
     const showReference = refToggle.checked;
     focusContainer.style.opacity = showReference ? opacityCtrl.value : 1;
@@ -677,10 +881,19 @@ function handlePointerDown(event) {
     }
 
     const edge = event.target.dataset?.edge;
-    if ((activeMode === "tilt" || activeMode === "sides") && edge && event.target.classList.contains("edge-handle")) {
+    if (activeMode === "sides" && edge && event.target.classList.contains("edge-handle")) {
         activeEdge = edge;
         lastContentPos = p;
         event.target.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        return;
+    }
+
+    const tiltAxis = event.target.closest("[data-tilt-axis]")?.dataset?.tiltAxis;
+    if (activeMode === "tilt" && tiltAxis) {
+        activeTiltAxis = tiltAxis;
+        lastContentPos = p;
+        event.target.closest("[data-tilt-axis]").setPointerCapture(event.pointerId);
         event.preventDefault();
         return;
     }
@@ -702,7 +915,7 @@ function handlePointerMove(event) {
         return;
     }
 
-    if (activeHandle === null && activeEdge === null && !isDraggingWhole) {
+    if (activeHandle === null && activeEdge === null && activeTiltAxis === null && !isDraggingWhole) {
         return;
     }
 
@@ -717,34 +930,37 @@ function handlePointerMove(event) {
         if (!tryUpdatePoints(nextPoints)) {
             return;
         }
+    } else if (activeTiltAxis !== null) {
+        const dx = p.x - lastContentPos.x;
+        const dy = p.y - lastContentPos.y;
+
+        if (activeTiltAxis === "pitch") {
+            setTiltRotation(tiltState.rotateX - dy * TILT_DRAG_SENSITIVITY, tiltState.rotateY);
+        } else if (activeTiltAxis === "yaw") {
+            setTiltRotation(tiltState.rotateX, tiltState.rotateY + dx * TILT_DRAG_SENSITIVITY);
+        }
+
+        lastContentPos = p;
     } else if (activeEdge !== null) {
         const dx = p.x - lastContentPos.x;
         const dy = p.y - lastContentPos.y;
-        if (activeMode === "tilt") {
-            tiltState = {
-                ...tiltState,
-                rotateX: clamp(tiltState.rotateX - dy * TILT_DRAG_SENSITIVITY, -MAX_TILT_DEGREES, MAX_TILT_DEGREES),
-                rotateY: clamp(tiltState.rotateY + dx * TILT_DRAG_SENSITIVITY, -MAX_TILT_DEGREES, MAX_TILT_DEGREES),
-            };
-            updateTiltPoints();
-        } else {
-            const edgePointIndexes = {
-                top: [0, 1],
-                right: [1, 2],
-                bottom: [2, 3],
-                left: [3, 0],
-            };
+        const edgePointIndexes = {
+            top: [0, 1],
+            right: [1, 2],
+            bottom: [2, 3],
+            left: [3, 0],
+        };
 
-            const nextPoints = points.map((point, index) =>
-                edgePointIndexes[activeEdge].includes(index) ? { x: point.x + dx, y: point.y + dy } : point,
-            );
+        const nextPoints = points.map((point, index) =>
+            edgePointIndexes[activeEdge].includes(index) ? { x: point.x + dx, y: point.y + dy } : point,
+        );
 
-            if (!tryUpdatePoints(nextPoints)) {
-                return;
-            }
+        if (!tryUpdatePoints(nextPoints)) {
+            return;
         }
+
         lastContentPos = p;
-    } else {
+    } else if (isDraggingWhole) {
         const dx = p.x - lastContentPos.x;
         const dy = p.y - lastContentPos.y;
         if (activeMode === "tilt") {
@@ -766,6 +982,7 @@ function handlePointerMove(event) {
 function stopDragging() {
     activeHandle = null;
     activeEdge = null;
+    activeTiltAxis = null;
     isDraggingWhole = false;
     isViewPan = false;
 }
@@ -956,6 +1173,12 @@ function initializePlanner() {
     opacityCtrl.addEventListener("input", updateUI);
     gridSnap.addEventListener("change", updateUI);
     refToggle.addEventListener("change", updateUI);
+    tiltPitchCtrl?.addEventListener("input", applyTiltControlFromSliders);
+    tiltYawCtrl?.addEventListener("input", applyTiltControlFromSliders);
+    tiltPitchInput?.addEventListener("input", () => applyTiltControlFromInput(tiltPitchInput));
+    tiltYawInput?.addEventListener("input", () => applyTiltControlFromInput(tiltYawInput));
+    tiltPitchInput?.addEventListener("change", () => applyTiltControlFromInput(tiltPitchInput));
+    tiltYawInput?.addEventListener("change", () => applyTiltControlFromInput(tiltYawInput));
     resetBtn.addEventListener("click", resetTransform);
     clearBtn.addEventListener("click", clearAllImages);
     addToDocumentBtn.addEventListener("click", addWarpedImageToDocument);

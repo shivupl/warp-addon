@@ -456,6 +456,124 @@
                 cursor: grabbing;
             }
 
+            .tilt-gizmo {
+                position: absolute;
+                inset: 0;
+                z-index: 105;
+                overflow: visible;
+                pointer-events: none;
+            }
+
+            .tilt-gizmo[hidden] {
+                display: none !important;
+            }
+
+            .tilt-gizmo .tilt-axis {
+                pointer-events: auto;
+                cursor: grab;
+            }
+
+            .tilt-gizmo .tilt-axis:active {
+                cursor: grabbing;
+            }
+
+            .tilt-gizmo .tilt-axis-pitch {
+                cursor: ns-resize;
+            }
+
+            .tilt-gizmo .tilt-axis-yaw {
+                cursor: ew-resize;
+            }
+
+            .tilt-axis-line,
+            .tilt-arc,
+            .tilt-horizon {
+                fill: none;
+                stroke: rgba(255, 255, 255, 0.95);
+                stroke-width: 2.5;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.45));
+                pointer-events: none;
+            }
+
+            .tilt-horizon {
+                stroke: rgba(255, 255, 255, 0.55);
+                stroke-width: 1.5;
+                stroke-dasharray: 6 5;
+            }
+
+            .tilt-hit-area {
+                fill: transparent;
+                stroke: none;
+            }
+
+            .tilt-axis.is-active .tilt-axis-line,
+            .tilt-axis.is-active .tilt-arc {
+                stroke: #fbbf24;
+            }
+
+            .tilt-angle-label {
+                fill: rgba(255, 255, 255, 0.95);
+                font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+                font-size: 12px;
+                font-weight: 700;
+                text-anchor: middle;
+                pointer-events: none;
+                filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.5));
+            }
+
+            .tilt-controls {
+                display: none;
+                flex-direction: column;
+                gap: 10px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #f1f5f9;
+            }
+
+            body[data-mode="tilt"] .tilt-controls {
+                display: flex;
+            }
+
+            .tilt-control-row {
+                display: grid;
+                grid-template-columns: auto minmax(0, 1fr) auto;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .tilt-control-row .label {
+                margin: 0;
+                min-width: 52px;
+                white-space: nowrap;
+            }
+
+            .tilt-control-row .range {
+                width: 100%;
+                min-width: 0;
+                accent-color: #7c3aed;
+            }
+
+            .tilt-angle-input {
+                width: 52px;
+                min-width: 52px;
+                padding: 4px 6px;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                background: #ffffff;
+                color: #334155;
+                font-family: inherit;
+                font-size: 11px;
+                font-weight: 700;
+                font-variant-numeric: tabular-nums;
+                text-align: center;
+            }
+
+            .tilt-angle-input:focus {
+                border-color: #5258e4;
+                outline: 2px solid rgba(82, 88, 228, 0.18);
+            }
+
             .controls {
                 display: flex;
                 flex-direction: column;
@@ -686,7 +804,6 @@
                 display: none;
             }
 
-            body[data-mode="tilt"] .edge-handle,
             body[data-mode="sides"] .edge-handle {
                 display: block;
             }
@@ -924,11 +1041,45 @@
                         <div class="edge-handle" data-edge="bottom" title="Drag bottom edge"></div>
                         <div class="edge-handle" data-edge="left" title="Drag left edge"></div>
                         <div id="centerGrab" class="handle-center" title="Drag to move the whole focus quad"></div>
+
+                        <svg id="tiltGizmo" class="tilt-gizmo" hidden aria-hidden="true">
+                            <g id="tiltGizmoRoot">
+                                <line id="tiltHorizonTop" class="tilt-horizon" />
+                                <line id="tiltHorizonBottom" class="tilt-horizon" />
+                                <g id="tiltPitchAxis" class="tilt-axis tilt-axis-pitch" data-tilt-axis="pitch" title="Drag up/down to tilt">
+                                    <line id="tiltPitchLine" class="tilt-axis-line" />
+                                    <polygon id="tiltPitchArrowTop" class="tilt-axis-line" fill="rgba(255,255,255,0.95)" stroke="none" />
+                                    <polygon id="tiltPitchArrowBottom" class="tilt-axis-line" fill="rgba(255,255,255,0.95)" stroke="none" />
+                                    <rect id="tiltPitchHit" class="tilt-hit-area" />
+                                </g>
+                                <g id="tiltYawAxis" class="tilt-axis tilt-axis-yaw" data-tilt-axis="yaw" title="Drag left/right to rotate">
+                                    <path id="tiltYawArc" class="tilt-arc" />
+                                    <polygon id="tiltYawArrowLeft" class="tilt-axis-line" fill="rgba(255,255,255,0.95)" stroke="none" />
+                                    <polygon id="tiltYawArrowRight" class="tilt-axis-line" fill="rgba(255,255,255,0.95)" stroke="none" />
+                                    <rect id="tiltYawHit" class="tilt-hit-area" />
+                                </g>
+                                <text id="tiltPitchLabel" class="tilt-angle-label">0°</text>
+                                <text id="tiltYawLabel" class="tilt-angle-label">0°</text>
+                            </g>
+                        </svg>
                     </div>
                 </div>
             </section>
 
             <section class="controls" aria-label="Warp controls">
+                <div class="tilt-controls" aria-label="Free tilt controls">
+                    <div class="tilt-control-row">
+                        <label class="label" for="tiltPitchCtrl">Tilt</label>
+                        <input class="range" type="range" id="tiltPitchCtrl" min="-78" max="78" step="1" value="0" />
+                        <input class="tilt-angle-input" type="number" id="tiltPitchInput" min="-78" max="78" step="1" value="0" aria-label="Tilt degrees" />
+                    </div>
+                    <div class="tilt-control-row">
+                        <label class="label" for="tiltYawCtrl">Rotate</label>
+                        <input class="range" type="range" id="tiltYawCtrl" min="-78" max="78" step="1" value="0" />
+                        <input class="tilt-angle-input" type="number" id="tiltYawInput" min="-78" max="78" step="1" value="0" aria-label="Rotate degrees" />
+                    </div>
+                </div>
+
                 <div class="controls-pair-layout">
                     <div class="opacity-collapse" id="opacityCollapse" aria-hidden="true">
                         <div class="opacity-collapse-inner">
